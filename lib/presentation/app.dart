@@ -9,7 +9,10 @@ import 'map/map_screen.dart';
 import 'feed/feed_screen.dart';
 import 'resources/resources_screen.dart';
 import 'widgets/sos_button.dart';
-import '../../domain/services/location_service.dart';
+import '../domain/services/location_service.dart';
+import '../domain/models/mesh_packet.dart';
+import '../providers/device_identity_provider.dart';
+import '../providers/message_provider.dart';
 
 class RescueMeshApp extends ConsumerStatefulWidget {
   const RescueMeshApp({Key? key}) : super(key: key);
@@ -50,6 +53,36 @@ class MainDashboardScreen extends ConsumerStatefulWidget {
 
 class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
   int _currentIndex = 0;
+
+  Future<bool> _triggerSos(WidgetRef ref) async {
+    try {
+      final locString = await LocationService().getCurrentLocationString();
+      final nodeId = ref.read(deviceIdentityProvider);
+      final syncEngine = ref.read(syncEngineProvider);
+      
+      final packet = MeshPacket(
+        msgId: 'sos_${DateTime.now().millisecondsSinceEpoch}',
+        originNodeId: nodeId,
+        type: 1, // SOS
+        priority: 3, // CRITICAL
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+        ttl: 86400000, // 24h
+        hopCount: 0,
+        payload: locString,
+      );
+      
+      final success = await syncEngine.queueOutgoingPacket(packet);
+      if (success) {
+        ref.invalidate(messagesRefreshProvider);
+        ref.read(meshServiceProvider).startScanning();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('SOS trigger failed: $e');
+      return false;
+    }
+  }
 
   final List<Widget> _screens = [
     const DashboardScreen(),
@@ -105,14 +138,8 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
         ],
       ),
       floatingActionButton: _currentIndex == 0 ? SosButton(
-        onSosTriggered: () async {
-          final locationService = LocationService();
-          final locString = await locationService.getEmergencyLocationString();
-          
-          debugPrint('Generated SOS with Location: \$locString');
-          // TODO: Actually construct and save SOS packet to DB, then mesh will pick it up
-        }
-      ) : null, // Only show SOS heavily on Dashboard to prevent accidental clicks on map
+        onSosTriggered: () => _triggerSos(ref),
+      ) : null,
     );
   }
 
@@ -142,7 +169,7 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
             ],
           ),
           Text(
-            'NODES: \${meshState.connectedPeersCount}',
+            'NODES: ${meshState.connectedPeersCount}',
             style: Theme.of(context).textTheme.labelMedium,
           ),
         ],

@@ -44,7 +44,19 @@ class MeshState {
 class MeshStateNotifier extends StateNotifier<MeshState> {
   final MeshService _meshService;
 
-  MeshStateNotifier(this._meshService) : super(MeshState());
+  MeshStateNotifier(this._meshService) : super(MeshState()) {
+    _meshService.connectedPeerCount.addListener(_onPeerCountChanged);
+  }
+
+  void _onPeerCountChanged() {
+    state = state.copyWith(connectedPeersCount: _meshService.connectedPeerCount.value);
+  }
+
+  @override
+  void dispose() {
+    _meshService.connectedPeerCount.removeListener(_onPeerCountChanged);
+    super.dispose();
+  }
 
   Future<void> initializeMesh() async {
     await _meshService.initializeAndStart();

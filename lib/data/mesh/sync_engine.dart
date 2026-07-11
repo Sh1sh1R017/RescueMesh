@@ -9,6 +9,24 @@ class SyncEngine {
   final AppDatabase _db = AppDatabase.instance;
   final EnergyOptimizer _energyOptimizer = EnergyOptimizer();
   final Random _random = Random();
+  
+  static const int maxHopCount = 8;
+
+  /// Queues a locally generated packet for outward transmission
+  Future<bool> queueOutgoingPacket(MeshPacket packet) async {
+    final db = await _db.database;
+    try {
+      await db.insert(
+        'messages',
+        packet.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error queueing outgoing packet: $e');
+      return false;
+    }
+  }
 
   /// Processes an incoming packet from another mesh node.
   /// Deduplicates based on msg_id and inserts if new.
@@ -63,14 +81,20 @@ class SyncEngine {
     for (var map in maps) {
       MeshPacket packet = MeshPacket.fromMap(map);
       
+      // M3: Check hop count limits
+      if (packet.hopCount >= maxHopCount) {
+        debugPrint('Hop limit reached for packet ${packet.msgId}, dropping.');
+        continue;
+      }
+      
       // M4: Apply AI Energy Optimizer policy
       double relayProb = await _energyOptimizer.getRelayProbability(packet.priority);
       double roll = _random.nextDouble();
       
       if (roll <= relayProb) {
-        packetsToForward.add(packet);
+        packetsToForward.add(packet.copyWith(hopCount: packet.hopCount + 1));
       } else {
-        debugPrint('Energy Optimizer dropped packet \${packet.msgId} to save battery.');
+        debugPrint('Energy Optimizer dropped packet ${packet.msgId} to save battery.');
       }
     }
 

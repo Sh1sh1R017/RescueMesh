@@ -19,6 +19,15 @@ class MeshService {
   
   StreamSubscription? _scanSubscription;
   final List<BluetoothDevice> _connectedPeers = [];
+  
+  // Exposes real-time peer count
+  final ValueNotifier<int> connectedPeerCount = ValueNotifier<int>(0);
+
+  void _updatePeerCount() {
+    if (connectedPeerCount.value != _connectedPeers.length) {
+      connectedPeerCount.value = _connectedPeers.length;
+    }
+  }
 
   Future<void> initializeAndStart() async {
     bool permissionsGranted = await _requestPermissions();
@@ -89,15 +98,30 @@ class MeshService {
 
     try {
       await device.connect(autoConnect: false, timeout: const Duration(seconds: 5));
-      _connectedPeers.add(device);
-      debugPrint('Connected to peer: \${device.remoteId}');
+      if (!_connectedPeers.contains(device)) {
+        _connectedPeers.add(device);
+        _updatePeerCount();
+      }
+      debugPrint('Connected to peer: ${device.remoteId}');
+
+      // Listen for unexpected disconnects
+      device.connectionState.listen((state) {
+        if (state == BluetoothConnectionState.disconnected) {
+          if (_connectedPeers.contains(device)) {
+            _connectedPeers.remove(device);
+            _updatePeerCount();
+            debugPrint('Peer disconnected: ${device.remoteId}');
+          }
+        }
+      });
 
       // Initiate Sync
       await _syncWithPeer(device);
 
     } catch (e) {
-      debugPrint('Connection failed to \${device.remoteId}: $e');
+      debugPrint('Connection failed to ${device.remoteId}: $e');
       _connectedPeers.remove(device);
+      _updatePeerCount();
     }
   }
 
@@ -141,7 +165,7 @@ class MeshService {
               bool isNew = await _syncEngine.processIncomingPacket(incoming);
               if (isNew) {
                 // If it's a new packet, we might want to broadcast it to other connected peers
-                debugPrint('Received new message from mesh: \${incoming.msgId}');
+                debugPrint('Received new message from mesh: ${incoming.msgId}');
               }
            } catch(e) {
               debugPrint('Error decoding incoming BLE message: $e');
@@ -161,5 +185,6 @@ class MeshService {
       await peer.disconnect();
     }
     _connectedPeers.clear();
+    _updatePeerCount();
   }
 }

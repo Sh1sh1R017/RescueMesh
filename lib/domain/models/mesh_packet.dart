@@ -24,6 +24,30 @@ class MeshPacket {
     this.signature,
   });
 
+  MeshPacket copyWith({
+    String? msgId,
+    String? originNodeId,
+    int? type,
+    int? priority,
+    int? timestamp,
+    int? ttl,
+    int? hopCount,
+    String? payload,
+    String? signature,
+  }) {
+    return MeshPacket(
+      msgId: msgId ?? this.msgId,
+      originNodeId: originNodeId ?? this.originNodeId,
+      type: type ?? this.type,
+      priority: priority ?? this.priority,
+      timestamp: timestamp ?? this.timestamp,
+      ttl: ttl ?? this.ttl,
+      hopCount: hopCount ?? this.hopCount,
+      payload: payload ?? this.payload,
+      signature: signature ?? this.signature,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'msg_id': msgId,

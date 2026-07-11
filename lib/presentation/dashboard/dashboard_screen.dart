@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/mesh_provider.dart';
+import '../../providers/message_provider.dart';
+import '../../domain/services/fema_report_generator.dart';
 import '../../core/theme/app_theme.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -8,27 +10,56 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final meshState = ref.watch(meshStateProvider);
+    final alertsAsyncValue = ref.watch(recentAlertsProvider);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildQuickActionCard(context),
-          const SizedBox(height: 16),
-          _buildFemaReportButton(context),
-          const SizedBox(height: 24),
-          _buildRecentAlertsHeader(),
-          _buildAlertItem('Medical Emergency', '2 blocks away', Icons.medical_services, AppTheme.criticalColor),
-          _buildAlertItem('Water Station Open', 'Community Center', Icons.water_drop, AppTheme.textPrimaryColor),
-          _buildAlertItem('Road Blocked', 'Main St. & 5th Ave', Icons.warning_amber_rounded, AppTheme.textPrimaryColor),
-        ],
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(messagesRefreshProvider);
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildQuickActionCard(context),
+            const SizedBox(height: 16),
+            _buildFemaReportButton(context, ref),
+            const SizedBox(height: 24),
+            _buildRecentAlertsHeader(),
+            alertsAsyncValue.when(
+              data: (alerts) {
+                if (alerts.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(child: Text('No recent alerts found.')),
+                  );
+                }
+                return Column(
+                  children: alerts.map((packet) {
+                    final color = packet.priority == 3 ? AppTheme.criticalColor : AppTheme.textPrimaryColor;
+                    final icon = packet.type == 1 ? Icons.medical_services : Icons.warning_amber_rounded;
+                    final typeStr = packet.type == 1 ? 'SOS' : 'Alert';
+                    return _buildAlertItem(
+                      typeStr,
+                      packet.payload,
+                      icon,
+                      color,
+                      packet.timestamp,
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text('Error loading alerts: $err')),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-
+  Widget _buildQuickActionCard(BuildContext context) {
     return Row(
       children: [
         Expanded(
@@ -59,14 +90,26 @@ class DashboardScreen extends ConsumerWidget {
       ],
     );
   }
-  
-  Widget _buildFemaReportButton(BuildContext context) {
+
+  Widget _buildFemaReportButton(BuildContext context, WidgetRef ref) {
     return ElevatedButton.icon(
-      onPressed: () {
-        // TODO: Call FemaReportGenerator and show HTML report dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Generating ICS-213 FEMA Report...'))
-        );
+      onPressed: () async {
+        final messages = await ref.read(messageRepositoryProvider).getRecentAlerts(limit: 100);
+        final htmlSource = FemaReportGenerator().generateIcs213Html(messages);
+        
+        if (context.mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => Scaffold(
+                appBar: AppBar(title: const Text('FEMA ICS-213 Report')),
+                body: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(htmlSource, style: const TextStyle(fontFamily: 'monospace')),
+                ),
+              ),
+            ),
+          );
+        }
       },
       icon: const Icon(Icons.assignment),
       label: const Text('Generate ICS-213 Report'),
@@ -84,13 +127,15 @@ class DashboardScreen extends ConsumerWidget {
         style: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.bold,
-          color: Colors.white,
         ),
       ),
     );
   }
   
-  Widget _buildAlertItem(String title, String subtitle, IconData icon, Color color) {
+  Widget _buildAlertItem(String title, String subtitle, IconData icon, Color color, int timestamp) {
+    final diff = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(timestamp));
+    final timeStr = diff.inMinutes > 60 ? '${diff.inHours}h ago' : '${diff.inMinutes}m ago';
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -98,9 +143,9 @@ class DashboardScreen extends ConsumerWidget {
           backgroundColor: color.withOpacity(0.1),
           child: Icon(icon, color: color),
         ),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle),
-        trailing: const Text('2m ago', style: TextStyle(fontSize: 12)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: Text(timeStr, style: const TextStyle(fontSize: 12)),
       ),
     );
   }
