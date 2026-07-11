@@ -12,8 +12,8 @@ class ResourcesScreen extends StatelessWidget {
         child: Column(
           children: [
             const TabBar(
-              indicatorColor: AppTheme.infoColor,
-              labelColor: Colors.white,
+              indicatorColor: AppTheme.textPrimaryColor,
+              labelColor: AppTheme.textPrimaryColor,
               unselectedLabelColor: AppTheme.textSecondaryColor,
               tabs: [
                 Tab(text: 'Available'),
@@ -35,7 +35,7 @@ class ResourcesScreen extends StatelessWidget {
         onPressed: () {
           // TODO: Open share resource form
         },
-        backgroundColor: AppTheme.infoColor,
+        backgroundColor: AppTheme.surfaceColor,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Share Resource', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
@@ -72,10 +72,10 @@ class ResourcesScreen extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppTheme.infoColor.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
+            color: AppTheme.textPrimaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: AppTheme.infoColor),
+          child: Icon(icon, color: AppTheme.textPrimaryColor),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18)),
         subtitle: Padding(
@@ -100,7 +100,7 @@ class ResourcesScreen extends StatelessWidget {
   }
   
   Widget _buildNeededCard(String title, String desc, String priority) {
-    Color pColor = priority == 'Critical' ? AppTheme.primaryColor : AppTheme.secondaryColor;
+    Color pColor = priority == 'Critical' ? AppTheme.criticalColor : AppTheme.textPrimaryColor;
     return Card(
       color: AppTheme.surfaceColor,
       margin: const EdgeInsets.only(bottom: 12),

@@ -46,8 +46,8 @@ class MapScreen extends StatelessWidget {
                 width: 60,
                 height: 60,
                 child: const Icon(
-                  Icons.warning,
-                  color: AppTheme.secondaryColor,
+                  Icons.person_pin_circle,
+                  color: AppTheme.textPrimaryColor,
                   size: 40,
                 ),
               ),

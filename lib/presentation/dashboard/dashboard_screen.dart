@@ -11,72 +11,24 @@ class DashboardScreen extends ConsumerWidget {
     final meshState = ref.watch(meshStateProvider);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(12.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildStatusCard(meshState),
-          const SizedBox(height: 24),
           _buildQuickActionCard(context),
           const SizedBox(height: 16),
           _buildFemaReportButton(context),
           const SizedBox(height: 24),
           _buildRecentAlertsHeader(),
-          _buildAlertItem('Medical Emergency', '2 blocks away', AppTheme.primaryColor),
-          _buildAlertItem('Water Station Open', 'Community Center', AppTheme.infoColor),
-          _buildAlertItem('Road Blocked', 'Main St. & 5th Ave', AppTheme.secondaryColor),
+          _buildAlertItem('Medical Emergency', '2 blocks away', Icons.medical_services, AppTheme.criticalColor),
+          _buildAlertItem('Water Station Open', 'Community Center', Icons.water_drop, AppTheme.textPrimaryColor),
+          _buildAlertItem('Road Blocked', 'Main St. & 5th Ave', Icons.warning_amber_rounded, AppTheme.textPrimaryColor),
         ],
       ),
     );
   }
 
-  Widget _buildStatusCard(MeshState meshState) {
-    bool isConnected = meshState.connectedPeersCount > 0;
-    
-    return Card(
-      elevation: 0,
-      color: isConnected ? AppTheme.safeColor.withOpacity(0.2) : AppTheme.secondaryColor.withOpacity(0.2),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isConnected ? AppTheme.safeColor : AppTheme.secondaryColor,
-          width: 2,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Icon(
-              isConnected ? Icons.bluetooth_connected : Icons.bluetooth_searching,
-              size: 48,
-              color: isConnected ? AppTheme.safeColor : AppTheme.secondaryColor,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              isConnected ? 'Mesh Network Active' : 'Searching for Peers...',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '\${meshState.connectedPeersCount} nodes connected nearby',
-              style: const TextStyle(fontSize: 16, color: AppTheme.textSecondaryColor),
-            ),
-            const SizedBox(height: 16),
-            if (meshState.isScanning || meshState.isAdvertising)
-              const LinearProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.textSecondaryColor),
-                backgroundColor: Colors.transparent,
-              )
-            else 
-              const SizedBox(height: 4), // Placeholder to prevent layout jump
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildQuickActionCard(BuildContext context) {
     return Row(
       children: [
         Expanded(
@@ -87,7 +39,7 @@ class DashboardScreen extends ConsumerWidget {
             icon: const Icon(Icons.warning_amber_rounded),
             label: const Text('Report Hazard'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.secondaryColor,
+              backgroundColor: AppTheme.surfaceColor,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 20),
             ),
@@ -102,7 +54,7 @@ class DashboardScreen extends ConsumerWidget {
             icon: const Icon(Icons.handshake),
             label: const Text('Share Resource'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.infoColor,
+              backgroundColor: AppTheme.surfaceColor,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 20),
             ),
@@ -144,14 +96,14 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
   
-  Widget _buildAlertItem(String title, String subtitle, Color color) {
+  Widget _buildAlertItem(String title, String subtitle, IconData icon, Color color) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: AppTheme.surfaceColor,
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(Icons.notification_important, color: color),
+          backgroundColor: color.withOpacity(0.1),
+          child: Icon(icon, color: color),
         ),
         title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle, style: const TextStyle(color: AppTheme.textSecondaryColor)),

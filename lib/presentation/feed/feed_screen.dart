@@ -4,6 +4,20 @@ import '../../core/theme/app_theme.dart';
 class FeedScreen extends StatelessWidget {
   const FeedScreen({Key? key}) : super(key: key);
 
+  IconData _getIconForType(String type) {
+    switch (type) {
+      case 'SOS': return Icons.medical_services;
+      case 'Report': return Icons.warning_amber_rounded;
+      case 'Resource': return Icons.water_drop;
+      default: return Icons.message;
+    }
+  }
+
+  Color _getColorForType(String type) {
+    if (type == 'SOS') return AppTheme.criticalColor;
+    return AppTheme.textPrimaryColor;
+  }
+
   @override
   Widget build(BuildContext context) {
     // Dummy data for the MVP
@@ -12,73 +26,72 @@ class FeedScreen extends StatelessWidget {
         'type': 'SOS',
         'content': 'Need immediate medical assistance for broken leg',
         'time': 'Just now',
-        'distance': '1.2 km away',
-        'color': AppTheme.primaryColor
+        'distance': '1.2 km',
       },
       {
         'type': 'Report',
         'content': 'Main street bridge is flooded and impassable',
         'time': '5 mins ago',
-        'distance': '0.5 km away',
-        'color': AppTheme.secondaryColor
+        'distance': '0.5 km',
       },
       {
         'type': 'Resource',
         'content': 'Community center has fresh water and charging station available',
         'time': '15 mins ago',
-        'distance': '2.0 km away',
-        'color': AppTheme.infoColor
+        'distance': '2.0 km',
       },
     ];
 
     return Scaffold(
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
+      body: ListView.separated(
         itemCount: feedItems.length,
+        separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final item = feedItems[index];
-          return Card(
-            color: AppTheme.surfaceColor,
-            margin: const EdgeInsets.only(bottom: 16.0),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          final type = item['type'] as String;
+          final color = _getColorForType(type);
+          
+          return ListTile(
+            leading: Icon(_getIconForType(type), color: color, size: 28),
+            title: Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Chip(
-                        label: Text(item['type'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                        backgroundColor: item['color'].withOpacity(0.2),
-                        labelStyle: TextStyle(color: item['color']),
-                        side: BorderSide.none,
-                      ),
-                      Text(
-                        item['time'],
-                        style: const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
                   Text(
-                    item['content'],
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                    type.toUpperCase(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: color,
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(width: 8),
+                  Text(
+                    item['time'],
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  const Spacer(),
                   Row(
                     children: [
-                      const Icon(Icons.location_on, size: 16, color: AppTheme.textSecondaryColor),
-                      const SizedBox(width: 4),
+                      const Icon(Icons.location_on, size: 12, color: AppTheme.textSecondaryColor),
+                      const SizedBox(width: 2),
                       Text(
                         item['distance'],
-                        style: const TextStyle(color: AppTheme.textSecondaryColor, fontSize: 14),
+                        style: Theme.of(context).textTheme.labelMedium,
                       ),
                     ],
                   ),
                 ],
               ),
             ),
+            subtitle: Text(
+              item['content'],
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            isThreeLine: true,
           );
         },
       ),
@@ -90,8 +103,7 @@ class FeedScreen extends StatelessWidget {
             onPressed: () {
               // TODO: Start Vosk Voice Recognition Service
             },
-            backgroundColor: AppTheme.secondaryColor,
-            child: const Icon(Icons.mic, color: Colors.white),
+            child: const Icon(Icons.mic),
           ),
           const SizedBox(width: 16),
           FloatingActionButton.extended(
@@ -99,9 +111,8 @@ class FeedScreen extends StatelessWidget {
             onPressed: () {
               // TODO: Open compose message dialog
             },
-            backgroundColor: AppTheme.infoColor,
-            icon: const Icon(Icons.edit, color: Colors.white),
-            label: const Text('Post', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            icon: const Icon(Icons.edit),
+            label: const Text('POST'),
           ),
         ],
       ),

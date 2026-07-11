@@ -1,58 +1,100 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // High contrast colors for disaster scenarios
-  static const Color primaryColor = Color(0xFFD32F2F); // High alert red
-  static const Color secondaryColor = Color(0xFFFFA000); // Warning amber
-  static const Color backgroundColor = Color(0xFF121212); // Battery saving dark mode
-  static const Color surfaceColor = Color(0xFF1E1E1E);
-  static const Color textColor = Color(0xFFFFFFFF);
-  static const Color textSecondaryColor = Color(0xFFB0B0B0);
+  // Functional, utilitarian color palette
+  static const Color neutralBase = Color(0xFF1A1C1E); // Near-black background
+  static const Color surfaceColor = Color(0xFF2D3033); // Slightly lighter for contrast
+  static const Color surfaceVariantColor = Color(0xFF3F4347); // For dividers and borders
   
-  static const Color safeColor = Color(0xFF388E3C); // Green for safe/resolved
-  static const Color infoColor = Color(0xFF1976D2); // Blue for info/resources
+  static const Color textPrimaryColor = Color(0xFFE2E2E2);
+  static const Color textSecondaryColor = Color(0xFF9E9E9E);
+  
+  // Single alert color, only used for critical states
+  static const Color criticalColor = Color(0xFFD32F2F); 
 
   static ThemeData get darkTheme {
     return ThemeData(
+      useMaterial3: true,
       brightness: Brightness.dark,
-      primaryColor: primaryColor,
-      scaffoldBackgroundColor: backgroundColor,
+      scaffoldBackgroundColor: neutralBase,
       colorScheme: const ColorScheme.dark(
-        primary: primaryColor,
-        secondary: secondaryColor,
+        primary: textPrimaryColor, // Default primary is neutral text
+        onPrimary: neutralBase,
+        secondary: surfaceVariantColor,
         surface: surfaceColor,
-        background: backgroundColor,
-        error: primaryColor,
+        background: neutralBase,
+        error: criticalColor,
+        onSurface: textPrimaryColor,
       ),
-      textTheme: const TextTheme(
-        displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textColor),
-        displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textColor),
-        bodyLarge: TextStyle(fontSize: 18, color: textColor),
-        bodyMedium: TextStyle(fontSize: 16, color: textSecondaryColor),
+      
+      // Structural typography. Regular weight by default, bold reserved for emphasis.
+      textTheme: TextTheme(
+        titleLarge: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: textPrimaryColor),
+        titleMedium: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: textPrimaryColor),
+        bodyLarge: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: textPrimaryColor),
+        bodyMedium: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: textSecondaryColor),
+        labelSmall: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: textSecondaryColor),
+        
+        // Monospace/Condensed for system data (Node IDs, Timestamps, Logs)
+        labelMedium: GoogleFonts.robotoMono(
+          fontSize: 12, 
+          fontWeight: FontWeight.w500, 
+          color: textSecondaryColor,
+        ),
       ),
+      
+      // Intentional shape rounding
+      cardTheme: CardTheme(
+        color: surfaceColor,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4), // Tight 4px radius for data density
+          side: const BorderSide(color: surfaceVariantColor, width: 1), // Harsh border
+        ),
+      ),
+      
+      listTileTheme: const ListTileThemeData(
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        iconColor: textSecondaryColor,
+      ),
+      
+      dividerTheme: const DividerThemeData(
+        color: surfaceVariantColor,
+        thickness: 1,
+        space: 1,
+      ),
+
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
-          foregroundColor: Colors.white,
-          minimumSize: const Size(double.infinity, 60), // Large tap targets
-          textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          backgroundColor: surfaceColor,
+          foregroundColor: textPrimaryColor,
+          elevation: 0,
+          minimumSize: const Size(double.infinity, 48),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8), // 8px for primary interactive elements
+            side: const BorderSide(color: surfaceVariantColor, width: 1),
           ),
         ),
       ),
-      cardTheme: CardTheme(
-        color: surfaceColor,
-        elevation: 4,
+      
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: surfaceColor,
+        foregroundColor: textPrimaryColor,
+        elevation: 2,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: surfaceVariantColor, width: 1),
         ),
       ),
+
       appBarTheme: const AppBarTheme(
-        backgroundColor: surfaceColor,
+        backgroundColor: neutralBase,
         elevation: 0,
-        centerTitle: true,
-        titleTextStyle: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor),
+        centerTitle: false, // Left aligned utility style
+        scrolledUnderElevation: 0,
+        titleTextStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: textPrimaryColor),
       ),
     );
   }

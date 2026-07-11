@@ -53,17 +53,17 @@ class VisionAnalyzerService {
       for (var label in labels) {
         String l = label.text.toLowerCase();
         if (l.contains('fire') || l.contains('flame') || l.contains('smoke')) {
-          return '[📷] 🔥 FIRE: Fire/Smoke detected at scene. Requires immediate response.';
+          return '[PHOTO] FIRE: Fire/Smoke detected at scene. Requires immediate response.';
         } else if (l.contains('flood') || l.contains('water') || l.contains('river')) {
-          return '[📷] 🌊 FLOOD: Flooding/Water detected at scene.';
+          return '[PHOTO] FLOOD: Flooding/Water detected at scene.';
         } else if (l.contains('weapon') || l.contains('gun') || l.contains('police')) {
-          return '[📷] 🚨 SECURITY: Security threat detected at scene.';
+          return '[PHOTO] SECURITY: Security threat detected at scene.';
         }
       }
       
       // Generic fallback
       String topLabels = labels.take(3).map((l) => l.text).join(', ');
-      return '[📷] Scene: $topLabels';
+      return '[PHOTO] Scene: $topLabels';
     } catch (e) {
       debugPrint('ML Kit inference failed: $e');
     }

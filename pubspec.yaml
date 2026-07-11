@@ -22,6 +22,7 @@ dependencies:
   # Mapping
   flutter_map: ^6.1.0
   latlong2: ^0.9.0
+  google_fonts: ^6.2.1
   
   # Bluetooth Low Energy Mesh Communication
   flutter_blue_plus: ^1.15.10

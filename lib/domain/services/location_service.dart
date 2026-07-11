@@ -36,7 +36,7 @@ class LocationService {
       );
       
       // Return a compact string to save BLE bandwidth
-      return '📍 [\${position.latitude.toStringAsFixed(4)}, \${position.longitude.toStringAsFixed(4)}]';
+      return '[LAT: \${position.latitude.toStringAsFixed(4)}, LNG: \${position.longitude.toStringAsFixed(4)}]';
     } catch (e) {
       debugPrint('Error getting location: $e');
       return '';

@@ -64,19 +64,14 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('RescueMesh'),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isConnected ? Icons.bluetooth_connected : Icons.bluetooth_searching, 
-              color: isConnected ? AppTheme.safeColor : AppTheme.secondaryColor
-            ),
-            onPressed: () {
-              // TODO: Show detailed mesh network stats dialog
-            },
-          )
+        // No centered title, left aligned utility style via theme
+      ),
+      body: Column(
+        children: [
+          _buildGlobalStatusBar(meshState),
+          Expanded(child: _screens[_currentIndex]),
         ],
       ),
-      body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -86,7 +81,7 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: AppTheme.surfaceColor,
-        selectedItemColor: AppTheme.primaryColor,
+        selectedItemColor: AppTheme.textPrimaryColor,
         unselectedItemColor: AppTheme.textSecondaryColor,
         items: const [
           BottomNavigationBarItem(
@@ -116,6 +111,40 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
           // TODO: Actually construct and save SOS packet to DB, then mesh will pick it up
         }
       ) : null, // Only show SOS heavily on Dashboard to prevent accidental clicks on map
+    );
+  }
+
+  Widget _buildGlobalStatusBar(MeshState meshState) {
+    bool isConnected = meshState.connectedPeersCount > 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: const BoxDecoration(
+        color: AppTheme.surfaceColor,
+        border: Border(bottom: BorderSide(color: AppTheme.surfaceVariantColor, width: 1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isConnected ? Icons.bluetooth_connected : Icons.bluetooth_searching,
+                size: 16,
+                color: isConnected ? AppTheme.textPrimaryColor : AppTheme.textSecondaryColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isConnected ? 'MESH ACTIVE' : 'SEARCHING...',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ],
+          ),
+          Text(
+            'NODES: \${meshState.connectedPeersCount}',
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ],
+      ),
     );
   }
 }
