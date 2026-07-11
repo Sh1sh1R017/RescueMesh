@@ -1,47 +1,76 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
+import '../providers/mesh_provider.dart';
 
-class RescueMeshApp extends StatelessWidget {
+// Screens
+import 'dashboard/dashboard_screen.dart';
+import 'map/map_screen.dart';
+import 'feed/feed_screen.dart';
+import 'resources/resources_screen.dart';
+import 'widgets/sos_button.dart';
+
+class RescueMeshApp extends ConsumerStatefulWidget {
   const RescueMeshApp({Key? key}) : super(key: key);
+
+  @override
+  ConsumerState<RescueMeshApp> createState() => _RescueMeshAppState();
+}
+
+class _RescueMeshAppState extends ConsumerState<RescueMeshApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize mesh network on app start
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(meshStateProvider.notifier).initializeMesh();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'RescueMesh',
-      theme: AppTheme.darkTheme, // Force dark/high-contrast theme for battery & visibility
+      theme: AppTheme.darkTheme, 
       home: const MainDashboardScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class MainDashboardScreen extends StatefulWidget {
+class MainDashboardScreen extends ConsumerStatefulWidget {
   const MainDashboardScreen({Key? key}) : super(key: key);
 
   @override
-  State<MainDashboardScreen> createState() => _MainDashboardScreenState();
+  ConsumerState<MainDashboardScreen> createState() => _MainDashboardScreenState();
 }
 
-class _MainDashboardScreenState extends State<MainDashboardScreen> {
+class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = [
-    const PlaceholderScreen(title: 'Emergency Dashboard'),
-    const PlaceholderScreen(title: 'Situation Map'),
-    const PlaceholderScreen(title: 'Neighborhood Feed'),
-    const PlaceholderScreen(title: 'Resource Sharing'),
+    const DashboardScreen(),
+    const MapScreen(),
+    const FeedScreen(),
+    const ResourcesScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final meshState = ref.watch(meshStateProvider);
+    final bool isConnected = meshState.connectedPeersCount > 0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('RescueMesh'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.bluetooth_connected, color: AppTheme.safeColor),
+            icon: Icon(
+              isConnected ? Icons.bluetooth_connected : Icons.bluetooth_searching, 
+              color: isConnected ? AppTheme.safeColor : AppTheme.secondaryColor
+            ),
             onPressed: () {
-              // TODO: Show mesh connection status
+              // TODO: Show detailed mesh network stats dialog
             },
           )
         ],
@@ -77,29 +106,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppTheme.primaryColor,
-        onPressed: () {
-          // TODO: Open SOS Creation Dialog
-        },
-        child: const Icon(Icons.sos, color: Colors.white, size: 32),
-      ),
-    );
-  }
-}
-
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-  const PlaceholderScreen({Key? key, required this.title}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.displayMedium,
-        textAlign: TextAlign.center,
-      ),
+      floatingActionButton: _currentIndex == 0 ? SosButton(
+        onSosTriggered: () {
+          // TODO: Actually construct and save SOS packet to DB, then mesh will pick it up
+        }
+      ) : null, // Only show SOS heavily on Dashboard to prevent accidental clicks on map
     );
   }
 }
