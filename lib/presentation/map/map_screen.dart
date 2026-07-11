@@ -45,9 +45,9 @@ class MapScreen extends StatelessWidget {
                 point: const LatLng(37.7800, -122.4200),
                 width: 60,
                 height: 60,
-                child: const Icon(
+                child: Icon(
                   Icons.person_pin_circle,
-                  color: AppTheme.textPrimaryColor,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 40,
                 ),
               ),
@@ -56,9 +56,9 @@ class MapScreen extends StatelessWidget {
                 point: const LatLng(37.7700, -122.4100),
                 width: 60,
                 height: 60,
-                child: const Icon(
-                  Icons.sos,
-                  color: AppTheme.primaryColor,
+                child: Icon(
+                  Icons.warning,
+                  color: Theme.of(context).colorScheme.error,
                   size: 40,
                 ),
               ),
@@ -68,10 +68,9 @@ class MapScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Center map on user location
+          // TODO: Add custom map marker
         },
-        backgroundColor: AppTheme.surfaceColor,
-        child: const Icon(Icons.my_location, color: Colors.white),
+        child: const Icon(Icons.add_location_alt),
       ),
     );
   }

@@ -39,8 +39,6 @@ class DashboardScreen extends ConsumerWidget {
             icon: const Icon(Icons.warning_amber_rounded),
             label: const Text('Report Hazard'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.surfaceColor,
-              foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 20),
             ),
           ),
@@ -54,8 +52,6 @@ class DashboardScreen extends ConsumerWidget {
             icon: const Icon(Icons.handshake),
             label: const Text('Share Resource'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.surfaceColor,
-              foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 20),
             ),
           ),
@@ -75,8 +71,6 @@ class DashboardScreen extends ConsumerWidget {
       icon: const Icon(Icons.assignment),
       label: const Text('Generate ICS-213 Report'),
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white24,
-        foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
       ),
     );
@@ -99,15 +93,14 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildAlertItem(String title, String subtitle, IconData icon, Color color) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: AppTheme.surfaceColor,
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: color.withOpacity(0.1),
           child: Icon(icon, color: color),
         ),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, style: const TextStyle(color: AppTheme.textSecondaryColor)),
-        trailing: const Text('2m ago', style: TextStyle(color: AppTheme.textSecondaryColor, fontSize: 12)),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(subtitle),
+        trailing: const Text('2m ago', style: TextStyle(fontSize: 12)),
       ),
     );
   }

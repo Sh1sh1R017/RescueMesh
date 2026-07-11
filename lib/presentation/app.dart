@@ -32,7 +32,9 @@ class _RescueMeshAppState extends ConsumerState<RescueMeshApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'RescueMesh',
-      theme: AppTheme.darkTheme, 
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       home: const MainDashboardScreen(),
       debugShowCheckedModeBanner: false,
     );
@@ -80,9 +82,9 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
           });
         },
         type: BottomNavigationBarType.fixed,
-        backgroundColor: AppTheme.surfaceColor,
-        selectedItemColor: AppTheme.textPrimaryColor,
-        unselectedItemColor: AppTheme.textSecondaryColor,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Theme.of(context).textTheme.bodyMedium?.color,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
@@ -118,9 +120,9 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
     bool isConnected = meshState.connectedPeersCount > 0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceColor,
-        border: Border(bottom: BorderSide(color: AppTheme.surfaceVariantColor, width: 1)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.secondary, width: 1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -130,7 +132,7 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
               Icon(
                 isConnected ? Icons.bluetooth_connected : Icons.bluetooth_searching,
                 size: 16,
-                color: isConnected ? AppTheme.textPrimaryColor : AppTheme.textSecondaryColor,
+                color: isConnected ? Theme.of(context).colorScheme.primary : Theme.of(context).textTheme.bodyMedium?.color,
               ),
               const SizedBox(width: 8),
               Text(
