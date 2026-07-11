@@ -18,6 +18,8 @@ class DashboardScreen extends ConsumerWidget {
           _buildStatusCard(meshState),
           const SizedBox(height: 24),
           _buildQuickActionCard(context),
+          const SizedBox(height: 16),
+          _buildFemaReportButton(context),
           const SizedBox(height: 24),
           _buildRecentAlertsHeader(),
           _buildAlertItem('Medical Emergency', '2 blocks away', AppTheme.primaryColor),
@@ -107,6 +109,24 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+  
+  Widget _buildFemaReportButton(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: () {
+        // TODO: Call FemaReportGenerator and show HTML report dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Generating ICS-213 FEMA Report...'))
+        );
+      },
+      icon: const Icon(Icons.assignment),
+      label: const Text('Generate ICS-213 Report'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white24,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+      ),
     );
   }
   

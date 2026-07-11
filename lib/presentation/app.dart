@@ -9,6 +9,7 @@ import 'map/map_screen.dart';
 import 'feed/feed_screen.dart';
 import 'resources/resources_screen.dart';
 import 'widgets/sos_button.dart';
+import '../../domain/services/location_service.dart';
 
 class RescueMeshApp extends ConsumerStatefulWidget {
   const RescueMeshApp({Key? key}) : super(key: key);
@@ -107,7 +108,11 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
         ],
       ),
       floatingActionButton: _currentIndex == 0 ? SosButton(
-        onSosTriggered: () {
+        onSosTriggered: () async {
+          final locationService = LocationService();
+          final locString = await locationService.getEmergencyLocationString();
+          
+          debugPrint('Generated SOS with Location: \$locString');
           // TODO: Actually construct and save SOS packet to DB, then mesh will pick it up
         }
       ) : null, // Only show SOS heavily on Dashboard to prevent accidental clicks on map

@@ -1,0 +1,113 @@
+import 'package:intl/intl.dart';
+import '../../domain/models/mesh_packet.dart';
+
+class FemaReportGenerator {
+  
+  /// Generates a FEMA ICS-213 HTML report from a list of MeshPackets.
+  String generateIcs213Html(List<MeshPacket> incidents) {
+    // Filter to only Critical and High priority
+    final filtered = incidents.where((p) => p.priority >= 2).toList();
+    
+    // Sort by priority (desc) then timestamp (desc)
+    filtered.sort((a, b) {
+      if (a.priority != b.priority) {
+        return b.priority.compareTo(a.priority);
+      }
+      return b.timestamp.compareTo(a.timestamp);
+    });
+
+    final now = DateTime.now();
+    final formatter = DateFormat('yyyy-MM-dd HH:mm:ss');
+    
+    StringBuffer rows = StringBuffer();
+    for (var packet in filtered) {
+      final date = DateTime.fromMillisecondsSinceEpoch(packet.timestamp);
+      final priorityStr = packet.priority == 3 ? 'CRITICAL' : 'HIGH';
+      final typeStr = _getTypeString(packet.type);
+      // Try to extract location if present
+      final locationMatch = RegExp(r'📍 \[([^\]]+)\]').firstMatch(packet.payload);
+      final location = locationMatch != null ? locationMatch.group(1) : 'Unknown';
+      
+      rows.writeln('''
+        <tr>
+          <td>\${formatter.format(date)}</td>
+          <td>\${packet.originNodeId.substring(0, 6)}...</td>
+          <td class="\${priorityStr.toLowerCase()}">\$priorityStr</td>
+          <td>\$typeStr</td>
+          <td>\$location</td>
+          <td>\${packet.payload}</td>
+        </tr>
+      ''');
+    }
+
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>FEMA ICS-213 General Message - ResQMesh</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+        h1 { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .header-info { display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .critical { color: #d32f2f; font-weight: bold; }
+        .high { color: #f57c00; font-weight: bold; }
+        .footer { margin-top: 30px; font-size: 0.9em; text-align: center; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>ICS 213: GENERAL MESSAGE</h1>
+    <div class="header-info">
+        <div>1. Incident Name: Mesh Network Local Area</div>
+        <div>2. To (Name and Position): Emergency Command Center</div>
+    </div>
+    <div class="header-info">
+        <div>3. From (Name and Position): ResQMesh Auto-Aggregator</div>
+        <div>4. Subject: Prioritized Incident Log</div>
+    </div>
+    <div class="header-info">
+        <div>5. Date: \${DateFormat('yyyy-MM-dd').format(now)}</div>
+        <div>6. Time: \${DateFormat('HH:mm').format(now)}</div>
+    </div>
+    
+    <h3>7. Message:</h3>
+    <p>The following critical and high priority incidents have been aggregated via the local BLE mesh network:</p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Time (Local)</th>
+                <th>Node ID</th>
+                <th>Priority</th>
+                <th>Category</th>
+                <th>Location</th>
+                <th>Message Payload</th>
+            </tr>
+        </thead>
+        <tbody>
+            \${rows.toString()}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        Generated automatically by ResQMesh AI Platform.<br>
+        Page 1 of 1
+    </div>
+</body>
+</html>
+''';
+  }
+
+  String _getTypeString(int type) {
+    switch (type) {
+      case 1: return 'SOS';
+      case 2: return 'Report';
+      case 3: return 'Missing';
+      case 4: return 'Resource';
+      default: return 'General';
+    }
+  }
+}

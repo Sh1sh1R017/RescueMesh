@@ -82,13 +82,28 @@ class FeedScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Open compose message dialog
-        },
-        backgroundColor: AppTheme.infoColor,
-        icon: const Icon(Icons.edit, color: Colors.white),
-        label: const Text('Post', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'voice_btn',
+            onPressed: () {
+              // TODO: Start Vosk Voice Recognition Service
+            },
+            backgroundColor: AppTheme.secondaryColor,
+            child: const Icon(Icons.mic, color: Colors.white),
+          ),
+          const SizedBox(width: 16),
+          FloatingActionButton.extended(
+            heroTag: 'post_btn',
+            onPressed: () {
+              // TODO: Open compose message dialog
+            },
+            backgroundColor: AppTheme.infoColor,
+            icon: const Icon(Icons.edit, color: Colors.white),
+            label: const Text('Post', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
