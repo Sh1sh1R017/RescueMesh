@@ -25,6 +25,8 @@ dependencies:
   
   # Bluetooth Low Energy Mesh Communication
   flutter_blue_plus: ^1.15.10
+  flutter_ble_peripheral: ^3.1.0
+  permission_handler: ^11.3.1
   
   # Utilities
   uuid: ^4.2.1
