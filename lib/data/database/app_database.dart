@@ -47,6 +47,7 @@ class AppDatabase {
         msg_id $idType,
         origin_node_id $textType,
         type $integerType,
+        priority $integerType,
         timestamp $integerType,
         ttl $integerType,
         hop_count $integerType,

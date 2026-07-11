@@ -5,6 +5,7 @@ class MeshPacket {
   final String msgId;
   final String originNodeId;
   final int type; // 1=SOS, 2=Report, 3=Missing, 4=Resource, 5=Chat
+  final int priority; // 0=NONE, 1=NORMAL, 2=HIGH, 3=CRITICAL
   final int timestamp;
   final int ttl;
   final int hopCount;
@@ -15,6 +16,7 @@ class MeshPacket {
     required this.msgId,
     required this.originNodeId,
     required this.type,
+    required this.priority,
     required this.timestamp,
     required this.ttl,
     required this.hopCount,
@@ -27,6 +29,7 @@ class MeshPacket {
       'msg_id': msgId,
       'origin_node_id': originNodeId,
       'type': type,
+      'priority': priority,
       'timestamp': timestamp,
       'ttl': ttl,
       'hop_count': hopCount,
@@ -40,6 +43,7 @@ class MeshPacket {
       msgId: map['msg_id'] ?? '',
       originNodeId: map['origin_node_id'] ?? '',
       type: map['type']?.toInt() ?? 0,
+      priority: map['priority']?.toInt() ?? 1, // Default to NORMAL
       timestamp: map['timestamp']?.toInt() ?? 0,
       ttl: map['ttl']?.toInt() ?? 0,
       hopCount: map['hop_count']?.toInt() ?? 0,

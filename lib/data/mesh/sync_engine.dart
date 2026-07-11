@@ -1,10 +1,14 @@
+import 'dart:math';
 import 'package:sqflite/sqflite.dart';
 import '../../domain/models/mesh_packet.dart';
 import '../database/app_database.dart';
+import '../../domain/services/energy_optimizer.dart';
 import 'package:flutter/foundation.dart';
 
 class SyncEngine {
   final AppDatabase _db = AppDatabase.instance;
+  final EnergyOptimizer _energyOptimizer = EnergyOptimizer();
+  final Random _random = Random();
 
   /// Processes an incoming packet from another mesh node.
   /// Deduplicates based on msg_id and inserts if new.
@@ -31,10 +35,6 @@ class SyncEngine {
         conflictAlgorithm: ConflictAlgorithm.ignore,
       );
       
-      // Note: Here we would also parse the payload depending on packet.type
-      // and insert it into reports, sos_requests, etc.
-      // For MVP, we just store the raw message for forwarding.
-      
       return true; // Indicates this is a new message that should be forwarded further
     } catch (e) {
       debugPrint('Error inserting incoming packet: $e');
@@ -43,27 +43,41 @@ class SyncEngine {
   }
 
   /// Retrieves messages that we need to send out.
-  /// For MVP: simply fetches the most recent N messages that haven't exceeded TTL.
+  /// Enforces Radio-Level Emergency Preemption by ordering by PRIORITY DESC.
+  /// Applies AI Energy Optimizer to probabilistically drop packets based on battery state.
   Future<List<MeshPacket>> getMessagesToForward({int limit = 50}) async {
     final db = await _db.database;
     final currentTime = DateTime.now().millisecondsSinceEpoch;
 
+    // Priority Queue: CRITICAL (3) drops before NORMAL (1)
     final List<Map<String, dynamic>> maps = await db.query(
       'messages',
       where: 'timestamp + ttl > ?', // Only fetch non-expired messages
       whereArgs: [currentTime],
-      orderBy: 'timestamp DESC',
+      orderBy: 'priority DESC, timestamp ASC', // Emergency Preemption
       limit: limit,
     );
 
-    return List.generate(maps.length, (i) {
-      return MeshPacket.fromMap(maps[i]);
-    });
+    List<MeshPacket> packetsToForward = [];
+
+    for (var map in maps) {
+      MeshPacket packet = MeshPacket.fromMap(map);
+      
+      // M4: Apply AI Energy Optimizer policy
+      double relayProb = await _energyOptimizer.getRelayProbability(packet.priority);
+      double roll = _random.nextDouble();
+      
+      if (roll <= relayProb) {
+        packetsToForward.add(packet);
+      } else {
+        debugPrint('Energy Optimizer dropped packet \${packet.msgId} to save battery.');
+      }
+    }
+
+    return packetsToForward;
   }
 
   /// Called when we connect to a new peer to initiate full synchronization.
-  /// In a production environment, this would exchange Bloom filters or Merkle trees.
-  /// For the MVP, we just broadcast our latest messages.
   Future<List<MeshPacket>> handlePeerConnected() async {
     return await getMessagesToForward();
   }
