@@ -17,9 +17,9 @@ class FeedScreen extends ConsumerWidget {
     }
   }
 
-  Color _getColorForType(int type) {
+  Color _getColorForType(int type, BuildContext context) {
     if (type == 1) return AppTheme.criticalColor;
-    return AppTheme.textPrimaryColor;
+    return Theme.of(context).colorScheme.onSurface;
   }
 
   String _getTypeString(int type) {
@@ -61,7 +61,7 @@ class FeedScreen extends ConsumerWidget {
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final packet = messages[index];
-                final color = _getColorForType(packet.type);
+                final color = _getColorForType(packet.type, context);
                 final typeStr = _getTypeString(packet.type);
                 
                 final diff = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(packet.timestamp));
@@ -92,7 +92,7 @@ class FeedScreen extends ConsumerWidget {
                         const Spacer(),
                         Row(
                           children: [
-                            const Icon(Icons.location_on, size: 12, color: AppTheme.textSecondaryColor),
+                            Icon(Icons.location_on, size: 12, color: Theme.of(context).textTheme.bodyMedium?.color),
                             const SizedBox(width: 2),
                             Text(
                               'Near', // Location placeholder for MVP

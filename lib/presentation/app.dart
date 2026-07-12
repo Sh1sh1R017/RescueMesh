@@ -56,7 +56,7 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
 
   Future<bool> _triggerSos(WidgetRef ref) async {
     try {
-      final locString = await LocationService().getCurrentLocationString();
+      final locString = await LocationService().getEmergencyLocationString();
       final nodeId = ref.read(deviceIdentityProvider);
       final syncEngine = ref.read(syncEngineProvider);
       

@@ -37,7 +37,7 @@ class DashboardScreen extends ConsumerWidget {
                 }
                 return Column(
                   children: alerts.map((packet) {
-                    final color = packet.priority == 3 ? AppTheme.criticalColor : AppTheme.textPrimaryColor;
+                    final color = packet.priority == 3 ? AppTheme.criticalColor : Theme.of(context).colorScheme.onSurface;
                     final icon = packet.type == 1 ? Icons.medical_services : Icons.warning_amber_rounded;
                     final typeStr = packet.type == 1 ? 'SOS' : 'Alert';
                     return _buildAlertItem(

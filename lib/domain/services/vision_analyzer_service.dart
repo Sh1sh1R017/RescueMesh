@@ -51,7 +51,7 @@ class VisionAnalyzerService {
 
       // Map labels to our categories
       for (var label in labels) {
-        String l = label.text.toLowerCase();
+        String l = label.label.toLowerCase();
         if (l.contains('fire') || l.contains('flame') || l.contains('smoke')) {
           return '[PHOTO] FIRE: Fire/Smoke detected at scene. Requires immediate response.';
         } else if (l.contains('flood') || l.contains('water') || l.contains('river')) {
@@ -62,7 +62,7 @@ class VisionAnalyzerService {
       }
       
       // Generic fallback
-      String topLabels = labels.take(3).map((l) => l.text).join(', ');
+      String topLabels = labels.take(3).map((l) => l.label).join(', ');
       return '[PHOTO] Scene: $topLabels';
     } catch (e) {
       debugPrint('ML Kit inference failed: $e');
