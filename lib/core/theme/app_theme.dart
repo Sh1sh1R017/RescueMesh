@@ -57,8 +57,6 @@ class AppTheme {
         onSecondary: textPrimaryColor,
         surface: surfaceColor,
         onSurface: textPrimaryColor,
-        background: neutralBase,
-        onBackground: textPrimaryColor,
         error: criticalColor,
         onError: Colors.white,
       ),

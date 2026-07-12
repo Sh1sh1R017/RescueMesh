@@ -10,7 +10,7 @@ class MapScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // For MVP we center on a default location, e.g., San Francisco
     // In production, we'd use the device's GPS via geolocator plugin.
-    final centerPosition = const LatLng(37.7749, -122.4194);
+    const centerPosition = LatLng(37.7749, -122.4194);
 
     return Scaffold(
       body: FlutterMap(

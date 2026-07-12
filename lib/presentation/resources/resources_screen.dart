@@ -67,7 +67,7 @@ class ResourcesScreen extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon),
@@ -103,7 +103,7 @@ class ResourcesScreen extends StatelessWidget {
         subtitle: Text(desc),
         trailing: Chip(
           label: Text(priority, style: TextStyle(color: pColor, fontSize: 12)),
-          backgroundColor: pColor.withOpacity(0.2),
+          backgroundColor: pColor.withValues(alpha: 0.2),
           side: BorderSide.none,
         ),
       ),
