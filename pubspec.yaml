@@ -27,7 +27,7 @@ dependencies:
   # Bluetooth Low Energy Mesh Communication
   flutter_blue_plus: ^1.15.10
   flutter_ble_peripheral: any
-  permission_handler: any
+  permission_handler: ^11.3.1
   
   # AI & ML
   tflite_flutter: ^0.11.0
