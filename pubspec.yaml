@@ -1,0 +1,67 @@
+name: rescuemesh
+description: A new Flutter project for RescueMesh - offline first disaster response.
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State management
+  flutter_riverpod: ^2.4.3
+  
+  # Database
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  
+  # Mapping
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
+  google_fonts: ^6.2.1
+  
+  # Bluetooth Low Energy Mesh Communication
+  flutter_blue_plus: ^1.15.10
+  flutter_ble_peripheral: any
+  permission_handler: ^11.3.1
+  
+  # AI & ML
+  tflite_flutter: ^0.12.0
+  google_mlkit_image_labeling: ^0.14.0
+  
+  # Device Capabilities
+  battery_plus: ^7.0.0
+  geolocator: ^10.1.0
+  image_picker: ^1.0.7
+  
+  # Utilities
+  uuid: ^4.2.1
+  intl: ^0.18.1
+
+  # Local LLM Inference Stack
+  fllama: ^0.0.1
+  device_info_plus: ^10.1.0
+  dio: ^5.7.0
+  path_provider: ^2.1.4
+
+  # UI and Icons
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/models/
+    - assets/vosk-model/
+
+dependency_overrides:
+  http: ^1.2.1
