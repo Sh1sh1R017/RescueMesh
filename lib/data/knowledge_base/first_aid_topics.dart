@@ -30,6 +30,7 @@ const List<FirstAidTopic> kFirstAidTopics = [
       '✂️ CUTTING → Pocket knife, scissors from a sewing kit, box cutters, or broken glass wrapped in cloth as a handle to cut away clothing from wounds.',
     ],
     contraindications: [
+      'Do NOT drink URINE (pee) — urine is body waste containing concentrated salts, urea, and sodium. Drinking it accelerates kidney damage and worsens dehydration.',
       'Do NOT use alcohol (vodka, hand sanitizer) directly inside wounds — it kills healing tissue and worsens damage. Use it on the SKIN AROUND the wound only to clean scissors/tools.',
       'Do NOT use toothpaste, butter, oil, mayonnaise, or egg white on burns — all trap heat and introduce bacteria.',
       'Do NOT use fluffy towels or wool directly on open wounds — fibres embed in the wound.',
@@ -45,8 +46,10 @@ const List<FirstAidTopic> kFirstAidTopics = [
       'no kit', 'no equipment', 'no supplies', 'disaster', 'riot', 'emergency',
       'makeshift', 'field', 'everyday', 'common', 'household', 'scarf', 'shirt',
       'belt', 'plastic', 'bottle', 'what can i use', 'without', 'instead of',
+      'pee', 'urine', 'drink pee', 'drink urine',
     ],
   ),
+
 
   // ─────────────────────────────────────────────
   // 1. TEAR GAS & PEPPER SPRAY
@@ -188,6 +191,7 @@ const List<FirstAidTopic> kFirstAidTopics = [
       'For dehydration only: rest, rehydrate with small frequent sips, add electrolytes.',
     ],
     contraindications: [
+      'Do NOT drink URINE (pee) — urine contains concentrated sodium, urea, and metabolic waste. Drinking urine accelerates kidney failure and speeds up fatal dehydration.',
       'Do NOT give fluids to an unconscious person — risk of aspiration.',
       'Do NOT over-cool to violent shivering — shivering generates internal heat.',
       'Do NOT give alcohol — worsens dehydration.',
@@ -201,8 +205,10 @@ const List<FirstAidTopic> kFirstAidTopics = [
     keywords: [
       'heat', 'hot', 'sun', 'faint', 'dizzy', 'dehydrated', 'water', 'passed out',
       'unconscious', 'exhaustion', 'heat stroke', 'sweating', 'overheated', 'thirsty',
-      'cramping', 'sunstroke',
+      'cramping', 'sunstroke', 'pee', 'urine', 'drink pee', 'drink urine', 'drinking pee',
+      'drinking urine', 'can i drink my pee', 'low water', 'no water',
     ],
+
   ),
 
   // ─────────────────────────────────────────────
