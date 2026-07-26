@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/time_utils.dart';
 import '../../core/constants/packet_constants.dart';
@@ -102,14 +104,15 @@ class FeedScreen extends ConsumerWidget {
                         const Spacer(),
                         Row(
                           children: [
-                            Icon(Icons.location_on, size: 12, color: Theme.of(context).textTheme.bodyMedium?.color),
+                            Icon(Icons.wifi_tethering, size: 12, color: Theme.of(context).textTheme.bodyMedium?.color),
                             const SizedBox(width: 2),
                             Text(
-                              'Near',
+                              'Node: ${packet.originNodeId.isEmpty ? "Local" : packet.originNodeId.substring(0, min(packet.originNodeId.length, 6))}',
                               style: Theme.of(context).textTheme.labelMedium,
                             ),
                           ],
                         ),
+
                       ],
                     ),
                   ),

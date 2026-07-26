@@ -42,7 +42,7 @@ class ChatMessage {
 // ─────────────────────────────────────────────
 
 class AiChatScreen extends ConsumerStatefulWidget {
-  const AiChatScreen({Key? key}) : super(key: key);
+  const AiChatScreen({super.key});
 
   @override
   ConsumerState<AiChatScreen> createState() => _AiChatScreenState();
@@ -56,16 +56,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   bool _useLlm = false; // Toggle: Knowledge Base vs. LLM
 
-  static const _suggestions = [
-    'Tear Gas / Eyes',
-    'Severe Bleeding',
-    'Rubber Bullet',
-    'Arrest Rights',
-    'Heat Stroke',
-    'Improvised Kit',
-    'Crowd Crush',
-    'CPR Steps',
-  ];
+  List<String> get _suggestions => _kbService.topicTitles;
+
 
   @override
   void initState() {

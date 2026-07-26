@@ -5,46 +5,15 @@ import '../../providers/device_identity_provider.dart';
 import '../../domain/models/mesh_packet.dart';
 import '../../domain/services/location_service.dart';
 import '../../core/constants/packet_constants.dart';
+import '../../core/utils/time_utils.dart';
 
 class ResourcesScreen extends ConsumerWidget {
   const ResourcesScreen({super.key});
 
-  static const _availableResources = [
-    (
-      title: 'Fresh Water',
-      desc: '100L available. Bring your own containers.',
-      dist: '0.5 km',
-      icon: Icons.water_drop,
-    ),
-    (
-      title: 'Generator Power',
-      desc: 'Running until 8PM. Charge phones/radios.',
-      dist: '1.2 km',
-      icon: Icons.electrical_services,
-    ),
-    (
-      title: 'First Aid Kits',
-      desc: 'Basic supplies, bandages, antiseptics.',
-      dist: '3.0 km',
-      icon: Icons.medical_services,
-    ),
-  ];
-
-  static const _neededResources = [
-    (
-      title: 'Baby Formula',
-      desc: 'Need formula for 6 month old.',
-      priority: 'High',
-    ),
-    (
-      title: 'Insulin',
-      desc: 'Type 1 Diabetic requires immediate insulin.',
-      priority: 'Critical',
-    ),
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final messagesAsync = ref.watch(recentMessagesProvider);
+
     return Scaffold(
       body: DefaultTabController(
         length: 2,
@@ -52,15 +21,15 @@ class ResourcesScreen extends ConsumerWidget {
           children: [
             const TabBar(
               tabs: [
-                Tab(text: 'Available'),
-                Tab(text: 'Needed'),
+                Tab(text: 'Available Resources'),
+                Tab(text: 'Needed Supplies'),
               ],
             ),
             Expanded(
               child: TabBarView(
                 children: [
-                  _buildAvailableList(),
-                  _buildNeededList(context),
+                  _buildResourceList(context, ref, messagesAsync, isAvailableTab: true),
+                  _buildResourceList(context, ref, messagesAsync, isAvailableTab: false),
                 ],
               ),
             ),
@@ -71,6 +40,113 @@ class ResourcesScreen extends ConsumerWidget {
         onPressed: () => _showShareResourceDialog(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('Share Resource'),
+      ),
+    );
+  }
+
+  Widget _buildResourceList(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<MeshPacket>> messagesAsync, {
+    required bool isAvailableTab,
+  }) {
+    return messagesAsync.when(
+      data: (messages) {
+        final resourcePackets = messages
+            .where((m) => m.type == PacketType.resource)
+            .toList();
+
+        if (resourcePackets.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isAvailableTab ? Icons.health_and_safety : Icons.medical_services_outlined,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isAvailableTab ? 'No Shared Resources Yet' : 'No Needed Supply Requests',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isAvailableTab
+                        ? 'Tap "Share Resource" below to broadcast water, power, or medicine to nearby off-grid nodes.'
+                        : 'Emergency requests submitted over the mesh will appear here automatically.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16.0),
+          itemCount: resourcePackets.length,
+          itemBuilder: (context, index) {
+            final packet = resourcePackets[index];
+            return _buildRealResourceCard(context, packet);
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('Error loading resources: $err')),
+    );
+  }
+
+  Widget _buildRealResourceCard(BuildContext context, MeshPacket packet) {
+    final timeStr = relativeTime(packet.timestamp);
+    IconData icon = Icons.medical_services;
+    Color iconColor = Colors.green;
+
+    if (packet.payload.contains('WATER')) {
+      icon = Icons.water_drop;
+      iconColor = Colors.blue;
+    } else if (packet.payload.contains('POWER')) {
+      icon = Icons.electrical_services;
+      iconColor = Colors.amber;
+    } else if (packet.payload.contains('FOOD')) {
+      icon = Icons.restaurant;
+      iconColor = Colors.orange;
+    } else if (packet.payload.contains('SHELTER')) {
+      icon = Icons.cabin;
+      iconColor = Colors.purple;
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: iconColor),
+        ),
+        title: Text(packet.payload.split('] ').last, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Row(
+            children: [
+              const Icon(Icons.access_time, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text(timeStr, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(width: 16),
+              const Icon(Icons.wifi_tethering, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text('Hops: ${packet.hopCount}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -156,81 +232,6 @@ class ResourcesScreen extends ConsumerWidget {
               child: const Text('SHARE RESOURCE'),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvailableList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: _availableResources.length,
-      itemBuilder: (context, index) {
-        final item = _availableResources[index];
-        return _buildResourceCard(item.title, item.desc, item.dist, item.icon);
-      },
-    );
-  }
-
-  Widget _buildNeededList(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: _neededResources.length,
-      itemBuilder: (context, index) {
-        final item = _neededResources[index];
-        return _buildNeededCard(context, item.title, item.desc, item.priority);
-      },
-    );
-  }
-
-  Widget _buildResourceCard(String title, String desc, String dist, IconData icon) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(desc),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(dist, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNeededCard(BuildContext context, String title, String desc, String priority) {
-    final Color pColor = priority == 'Critical'
-        ? Theme.of(context).colorScheme.error
-        : Theme.of(context).colorScheme.primary;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        subtitle: Text(desc),
-        trailing: Chip(
-          label: Text(priority, style: TextStyle(color: pColor, fontSize: 12)),
-          backgroundColor: pColor.withValues(alpha: 0.2),
-          side: BorderSide.none,
         ),
       ),
     );

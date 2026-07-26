@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../providers/message_provider.dart';
 import '../../providers/device_identity_provider.dart';
 import '../../domain/models/mesh_packet.dart';
@@ -280,8 +282,22 @@ class DashboardScreen extends ConsumerWidget {
         if (context.mounted) {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => Scaffold(
-                appBar: AppBar(title: const Text('FEMA ICS-213 Report')),
+              builder: (previewContext) => Scaffold(
+                appBar: AppBar(
+                  title: const Text('FEMA ICS-213 Report'),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.copy),
+                      tooltip: 'Copy to Clipboard',
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: htmlSource));
+                        ScaffoldMessenger.of(previewContext).showSnackBar(
+                          const SnackBar(content: Text('FEMA ICS-213 Report copied to clipboard.')),
+                        );
+                      },
+                    ),
+                  ],
+                ),
                 body: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Text(htmlSource, style: const TextStyle(fontFamily: 'monospace')),
@@ -289,6 +305,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           );
+
         }
       },
       icon: const Icon(Icons.assignment),

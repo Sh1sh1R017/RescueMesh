@@ -22,18 +22,44 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       RegExp(r'\[LAT: ([-\d.]+), LNG: ([-\d.]+)\]');
 
   int _selectedFilterType = 0; // 0=All, 1=SOS, 2=Reports/Hazards, 4=Resources
+  LatLng _currentCenter = const LatLng(27.7172, 85.3240); // Initialized to default disaster response region (Kathmandu/Global)
+
+  @override
+  void initState() {
+    super.initState();
+    _determineCenterLocation();
+  }
+
+  Future<void> _determineCenterLocation() async {
+    try {
+      final messages = await ref.read(messageRepositoryProvider).getRecentMessages(limit: 10);
+      for (final packet in messages) {
+        final match = _locationRegExp.firstMatch(packet.payload);
+        if (match != null) {
+          final lat = double.tryParse(match.group(1) ?? '');
+          final lng = double.tryParse(match.group(2) ?? '');
+          if (lat != null && lng != null && mounted) {
+            setState(() {
+              _currentCenter = LatLng(lat, lng);
+            });
+            return;
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
-    const centerPosition = LatLng(37.7749, -122.4194);
     final messagesAsync = ref.watch(recentMessagesProvider);
+
 
     return Scaffold(
       body: Stack(
         children: [
           FlutterMap(
             options: MapOptions(
-              initialCenter: centerPosition,
+              initialCenter: _currentCenter,
               initialZoom: 14.0,
               onLongPress: (tapPosition, point) {
                 _showAddCustomMarkerDialog(context, point);
@@ -49,17 +75,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 data: (messages) {
                   final markers = <Marker>[
                     // Default user location marker
-                    const Marker(
-                      point: centerPosition,
+                    Marker(
+                      point: _currentCenter,
                       width: 60,
                       height: 60,
-                      child: Icon(
+                      child: const Icon(
                         Icons.my_location,
                         color: Colors.blue,
                         size: 36,
                       ),
                     ),
                   ];
+
 
                   for (final packet in messages) {
                     if (_selectedFilterType != 0 && packet.type != _selectedFilterType) {
