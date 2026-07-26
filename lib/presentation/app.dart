@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -124,13 +123,19 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
 
   Future<bool> _triggerSos(WidgetRef ref) async {
     try {
-      final locString = await LocationService().getEmergencyLocationString();
+      String locString = '';
+      try {
+        locString = await LocationService().getEmergencyLocationString();
+      } catch (e) {
+        debugPrint('Emergency location fallback: $e');
+      }
+
       final nodeId = ref.read(deviceIdentityProvider);
       final syncEngine = ref.read(syncEngineProvider);
 
       final String payloadStr = locString.isNotEmpty
-          ? locString
-          : '[CRITICAL EMERGENCY SOS] Location unavailable — Node: ${nodeId.isEmpty ? "Local" : nodeId.substring(0, min(nodeId.length, 6))}';
+          ? '🆘 [CRITICAL SOS EMERGENCY] $locString'
+          : '🆘 [CRITICAL SOS EMERGENCY] Location signal pending — Node ID: ${nodeId.length > 6 ? nodeId.substring(0, 6) : nodeId}';
 
       final packet = MeshPacket(
         msgId: 'sos_${DateTime.now().millisecondsSinceEpoch}',
@@ -146,7 +151,10 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
       final success = await syncEngine.queueOutgoingPacket(packet);
       if (success) {
         ref.invalidate(messagesRefreshProvider);
-        ref.read(meshServiceProvider).startScanning();
+        try {
+          await ref.read(meshServiceProvider).startAdvertising();
+          await ref.read(meshServiceProvider).startScanning();
+        } catch (_) {}
         return true;
       }
       return false;
