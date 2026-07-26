@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  rescuemesh-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rescuemesh_apk_builder
+    volumes:
+      - ./build/app/outputs/flutter-apk:/app/build/app/outputs/flutter-apk
+    command: flutter build apk --release

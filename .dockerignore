@@ -1,0 +1,15 @@
+.dart_tool/
+.git/
+.github/
+.idea/
+.vscode/
+build/
+android/.gradle/
+android/app/build/
+ios/
+macOS/
+web/
+windows/
+linux/
+*.iml
+pubspec.lock
