@@ -7,7 +7,7 @@ import '../domain/services/llm_inference_service.dart';
 // Single source of truth for the default mesh URL
 // ─────────────────────────────────────────────
 
-const String kDefaultMeshBaseUrl = 'http://192.168.4.1:8080/models/';
+const String kDefaultMeshBaseUrl = 'https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct-GGUF/resolve/main/';
 
 // ─────────────────────────────────────────────
 // Shared service instances

@@ -44,7 +44,7 @@ enum DownloadStatus { idle, downloading, paused, complete, error }
 /// http://192.168.4.1:8080/models/), supports resume-on-disconnect via
 /// HTTP Range headers, and reports live progress via a [StreamController].
 class ModelDownloadService {
-  static const String _defaultBaseUrl = 'http://192.168.4.1:8080/models/';
+  static const String _defaultBaseUrl = 'https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct-GGUF/resolve/main/';
   static const Duration _connectTimeout = Duration(seconds: 30);
   static const Duration _receiveTimeout = Duration(seconds: 0); // streaming
 

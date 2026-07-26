@@ -218,10 +218,10 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionLabel('MESH DOWNLOAD SOURCE'),
+          _buildSectionLabel('MODEL DOWNLOAD SOURCE'),
           const SizedBox(height: 4),
           const Text(
-            'Enter the URL/IP of your mesh server hosting SmolLM2 GGUF files.',
+            'Default: Pre-configured HuggingFace repository. Can be repointed to any local emergency peer/relay in the field.',
             style: TextStyle(color: Colors.grey, fontSize: 12),
           ),
           const SizedBox(height: 12),
@@ -233,7 +233,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
               fontSize: 14,
             ),
             decoration: InputDecoration(
-              hintText: 'https://huggingface.co/HuggingFaceTB/',
+              hintText: 'https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct-GGUF/resolve/main/',
               hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
               filled: true,
               fillColor: const Color(0xFF1A1D24),
