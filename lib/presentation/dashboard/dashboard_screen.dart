@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/message_provider.dart';
@@ -18,53 +19,66 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final alertsAsyncValue = ref.watch(recentAlertsProvider);
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(messagesRefreshProvider);
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildQuickActionCard(context, ref),
-            const SizedBox(height: 16),
-            _buildFemaReportButton(context, ref),
-            const SizedBox(height: 24),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12.0),
-              child: Text(
-                'Nearby Alerts',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(recentAlertsProvider);
+        },
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.all(16.0),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildQuickActions(context, ref),
+                  const SizedBox(height: 16),
+                  _buildFemaReportButton(context, ref),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Nearby Alerts',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                ]),
               ),
             ),
             alertsAsyncValue.when(
               data: (alerts) {
                 if (alerts.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(child: Text('No recent alerts found.')),
+                  return const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Text(
+                        'No recent alerts found.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
                   );
                 }
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: alerts.length,
-                  itemBuilder: (context, index) {
-                    final packet = alerts[index];
-                    return AlertCard(
-                      key: ValueKey(packet.msgId),
-                      packet: packet,
-                    );
-                  },
+                return SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final packet = alerts[index];
+                        return AlertCard(
+                          key: ValueKey(packet.msgId),
+                          packet: packet,
+                        );
+                      },
+                      childCount: alerts.length,
+                    ),
+                  ),
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Error loading alerts: $err')),
+              loading: () => const SliverFillRemaining(
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (err, stack) => SliverFillRemaining(
+                child: Center(child: Text('Error loading alerts: $err')),
+              ),
             ),
           ],
         ),
@@ -72,36 +86,36 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuickActionCard(BuildContext context, WidgetRef ref) {
+  Widget _buildQuickActions(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
         Expanded(
           child: Semantics(
             button: true,
             label: 'Report Hazard',
-            hint: 'Opens modal to report nearby hazard over BLE mesh',
+            hint: 'Opens dialog to report a hazard to nearby nodes',
             child: ElevatedButton.icon(
               onPressed: () => _showReportHazardDialog(context, ref),
               icon: const Icon(Icons.warning_amber_rounded),
               label: const Text('Report Hazard'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 20),
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(
           child: Semantics(
             button: true,
             label: 'Share Resource',
-            hint: 'Opens modal to share supplies or water over BLE mesh',
+            hint: 'Opens dialog to share water, power, or supplies',
             child: ElevatedButton.icon(
               onPressed: () => _showShareResourceDialog(context, ref),
-              icon: const Icon(Icons.handshake),
+              icon: const Icon(Icons.inventory_2_outlined),
               label: const Text('Share Resource'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 20),
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
           ),
@@ -118,22 +132,23 @@ class DashboardScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Report Hazard'),
+          title: const Text('Report Field Hazard'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Hazard Category:'),
+              const Text('Category:'),
               const SizedBox(height: 8),
               DropdownButton<String>(
                 value: selectedCategory,
                 isExpanded: true,
                 items: const [
                   DropdownMenuItem(value: 'FIRE', child: Text('🔥 Fire / Smoke')),
-                  DropdownMenuItem(value: 'FLOOD', child: Text('🌊 Flooding')),
-                  DropdownMenuItem(value: 'COLLAPSE', child: Text('🏢 Building Collapse')),
-                  DropdownMenuItem(value: 'SECURITY', child: Text('🛡️ Security Threat')),
-                  DropdownMenuItem(value: 'BLOCKED_ROAD', child: Text('🚧 Blocked Road')),
+                  DropdownMenuItem(value: 'FLOOD', child: Text('🌊 Flood / Water')),
+                  DropdownMenuItem(value: 'ROAD_BLOCK', child: Text('🚧 Road Block / Debris')),
+                  DropdownMenuItem(value: 'POLICE', child: Text('👮 Heavy Police / Tear Gas')),
+                  DropdownMenuItem(value: 'MEDICAL', child: Text('🚑 Medical Emergency')),
+                  DropdownMenuItem(value: 'HAZMAT', child: Text('☣️ Chemical / Toxic')),
                 ],
                 onChanged: (val) {
                   if (val != null) {
@@ -290,6 +305,7 @@ class DashboardScreen extends ConsumerWidget {
       child: ElevatedButton.icon(
         onPressed: () async {
           final messages = await ref.read(messageRepositoryProvider).getRecentAlerts(limit: 100);
+          final markdownSource = FemaReportGenerator().generateIcs213Markdown(messages);
           final htmlSource = FemaReportGenerator().generateIcs213Html(messages);
 
           if (!context.mounted) return;
@@ -301,12 +317,23 @@ class DashboardScreen extends ConsumerWidget {
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.copy),
-                      tooltip: 'Copy to Clipboard',
+                      tooltip: 'Copy Text Report',
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: markdownSource));
+                        if (!previewContext.mounted) return;
+                        ScaffoldMessenger.of(previewContext).showSnackBar(
+                          const SnackBar(content: Text('Text Report copied to clipboard.')),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.code),
+                      tooltip: 'Copy HTML Markup',
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: htmlSource));
                         if (!previewContext.mounted) return;
                         ScaffoldMessenger.of(previewContext).showSnackBar(
-                          const SnackBar(content: Text('FEMA ICS-213 Report copied to clipboard.')),
+                          const SnackBar(content: Text('FEMA HTML code copied to clipboard.')),
                         );
                       },
                     ),
@@ -314,7 +341,10 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 body: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
-                  child: Text(htmlSource, style: const TextStyle(fontFamily: 'monospace')),
+                  child: MarkdownBody(
+                    data: markdownSource,
+                    selectable: true,
+                  ),
                 ),
               ),
             ),

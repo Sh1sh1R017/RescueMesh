@@ -2,7 +2,7 @@ import 'package:intl/intl.dart';
 import '../../domain/models/mesh_packet.dart';
 
 class FemaReportGenerator {
-  
+
   String _escapeHtml(String text) {
     return text
         .replaceAll('&', '&amp;')
@@ -12,12 +12,63 @@ class FemaReportGenerator {
         .replaceAll("'", '&#39;');
   }
 
-  /// Generates a FEMA ICS-213 HTML report from a list of MeshPackets.
+  /// Generates a clean, human-readable Markdown FEMA ICS-213 report for native UI rendering.
+  String generateIcs213Markdown(List<MeshPacket> incidents) {
+    final filtered = incidents.where((p) => p.priority >= 2).toList();
+
+    filtered.sort((a, b) {
+      if (a.priority != b.priority) {
+        return b.priority.compareTo(a.priority);
+      }
+      return b.timestamp.compareTo(a.timestamp);
+    });
+
+    final now = DateTime.now();
+    final formatter = DateFormat('yyyy-MM-dd HH:mm:ss');
+
+    final sb = StringBuffer();
+    sb.writeln('# 📋 ICS 213: GENERAL MESSAGE FORM');
+    sb.writeln('**FEMA Incident Command System — Emergency Log**\n');
+    sb.writeln('---');
+    sb.writeln('**1. Incident Name:** Mesh Network Local Area  ');
+    sb.writeln('**2. To:** Emergency Command Center / Incident Commander  ');
+    sb.writeln('**3. From:** RescueMesh Auto-Aggregator  ');
+    sb.writeln('**4. Subject:** Prioritized Incident Log  ');
+    sb.writeln('**5. Date:** ${DateFormat('yyyy-MM-dd').format(now)}  ');
+    sb.writeln('**6. Time:** ${DateFormat('HH:mm').format(now)}  ');
+    sb.writeln('----\n');
+
+    sb.writeln('### 7. Message:');
+    sb.writeln('The following critical and high-priority incidents have been aggregated via the off-grid BLE mesh network:\n');
+
+    if (filtered.isEmpty) {
+      sb.writeln('*No recent critical or high priority incident alerts recorded.*');
+    } else {
+      sb.writeln('| Time (Local) | Node ID | Priority | Category | Location | Message Payload |');
+      sb.writeln('|---|---|---|---|---|---|');
+
+      for (var packet in filtered) {
+        final date = DateTime.fromMillisecondsSinceEpoch(packet.timestamp);
+        final priorityStr = packet.priority == 3 ? '🔴 CRITICAL' : '🟠 HIGH';
+        final typeStr = _getTypeString(packet.type);
+        final locationMatch = RegExp(r'\[LAT: ([-\d.]+), LNG: ([-\d.]+)\]').firstMatch(packet.payload);
+        final rawLocation = locationMatch != null ? '${locationMatch.group(1)}, ${locationMatch.group(2)}' : 'GPS Unavailable';
+
+        final nodeIdShort = packet.originNodeId.length > 6 ? packet.originNodeId.substring(0, 6) : packet.originNodeId;
+
+        sb.writeln('| ${formatter.format(date)} | `$nodeIdShort` | **$priorityStr** | $typeStr | $rawLocation | ${packet.payload} |');
+      }
+    }
+
+    sb.writeln('\n---');
+    sb.writeln('*Generated automatically by RescueMesh Field Tool • 100% Off-Grid Secure*');
+    return sb.toString();
+  }
+
+  /// Generates a FEMA ICS-213 HTML report for copying or web printing.
   String generateIcs213Html(List<MeshPacket> incidents) {
-    // Filter to only Critical and High priority
     final filtered = incidents.where((p) => p.priority >= 2).toList();
     
-    // Sort by priority (desc) then timestamp (desc)
     filtered.sort((a, b) {
       if (a.priority != b.priority) {
         return b.priority.compareTo(a.priority);
@@ -33,7 +84,6 @@ class FemaReportGenerator {
       final date = DateTime.fromMillisecondsSinceEpoch(packet.timestamp);
       final priorityStr = packet.priority == 3 ? 'CRITICAL' : 'HIGH';
       final typeStr = _getTypeString(packet.type);
-      // Try to extract location if present
       final locationMatch = RegExp(r'\[LAT: ([-\d.]+), LNG: ([-\d.]+)\]').firstMatch(packet.payload);
       final rawLocation = locationMatch != null ? '${locationMatch.group(1)}, ${locationMatch.group(2)}' : 'Unknown';
       
