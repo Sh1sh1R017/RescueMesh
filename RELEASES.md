@@ -1,47 +1,45 @@
-# 📦 RESCUEMESH RELEASE ARTIFACTS & INSTALLATION GUIDE
+# 📦 RESCUEMESH OFFICIAL RELEASE APKs
 
 **RELEASE VERSION**: v1.0.0-release  
 **BUILD DATE**: July 26, 2026  
 **TARGET PLATFORM**: Android 7.0+ (API 24 to 36)  
-**ARCHITECTURE**: `arm64-v8a`, `armeabi-v7a`, `x86_64`  
-**APK FILE SIZE**: ~127.3 MB (Includes native `llama.cpp` Edge AI engine & C++ libraries)  
-**STATUS**: 🟢 **COMPILED & VERIFIED SUCCESSFUL**  
+**STATUS**: 🟢 **COMPILED & PUBLISHED TO GITHUB**  
 
 ---
 
-## 🚀 LOCAL RELEASE APK LOCATION
+## 🚀 DOWNLOAD RELEASE APKs DIRECTLY FROM REPOSITORY
 
-The compiled production release APK is stored locally at:
-```text
-d:\RescueMesh-main\releases\RescueMesh-v1.0.0-release.apk
-d:\RescueMesh-main\build\app\outputs\flutter-apk\app-release.apk
-```
+The compiled production APK binaries are committed directly to this GitHub repository in the [`releases/`](releases/) directory:
+
+| Architecture | APK File | Size | Compatible Devices |
+|---|---|---|---|
+| 📱 **ARM 64-bit** (Standard) | [`RescueMesh-arm64-v8a-release.apk`](releases/RescueMesh-arm64-v8a-release.apk) | **56.7 MB** | 95%+ of modern Android smartphones |
+| 📱 **ARM 32-bit** (Legacy) | [`RescueMesh-armeabi-v7a-release.apk`](releases/RescueMesh-armeabi-v7a-release.apk) | **36.9 MB** | Older 32-bit Android phones |
+| 💻 **x86_64** (Emulator) | [`RescueMesh-x86_64-release.apk`](releases/RescueMesh-x86_64-release.apk) | **53.8 MB** | Android Studio emulators & x86 tablets |
 
 ---
 
 ## 📲 HOW TO INSTALL ON YOUR PHONE
 
-### Option A: Transfer via USB Cable
-1. Connect your Android phone to your PC via USB cable.
-2. Select **File Transfer** on your phone notification bar.
-3. Copy `d:\RescueMesh-main\releases\RescueMesh-v1.0.0-release.apk` to your phone's **Download** folder.
-4. On your phone, open **Files / Downloads**, tap `RescueMesh-v1.0.0-release.apk`, and tap **Install**.
+### Method A: Direct Download & Install
+1. Open this repository on your phone browser.
+2. Tap [`RescueMesh-arm64-v8a-release.apk`](releases/RescueMesh-arm64-v8a-release.apk) and tap **Download Raw**.
+3. Open your phone's **Downloads** folder and tap the `.apk` file to install.
 
-### Option B: Install via ADB (Command Line)
-With USB Debugging enabled on your phone:
+### Method B: ADB Install via USB
 ```bash
-adb install releases/RescueMesh-v1.0.0-release.apk
+adb install releases/RescueMesh-arm64-v8a-release.apk
 ```
 
 ---
 
-## 🛠️ RE-BUILDING THE RELEASE APK
+## 🛠️ REBUILDING FROM SOURCE
 
-To rebuild the APK at any time on your machine:
+To rebuild the APK binaries at any time:
 ```bash
-# Method 1: Using Flutter
-flutter build apk --release
+# Split per architecture (for GitHub tracking)
+flutter build apk --release --split-per-abi
 
-# Method 2: Using Docker (Containerized Build)
+# Or via Docker
 docker compose up --build
 ```
