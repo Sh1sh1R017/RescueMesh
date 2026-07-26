@@ -15,8 +15,8 @@
 ### 📲 **Direct Release APK Downloads**
 
 [<img src="https://img.shields.io/badge/📲_DOWNLOAD_APK-ARM64--v8a_(56.7_MB)-2e7d32?style=for-the-badge&logo=android&logoColor=white" height="42"/>](https://github.com/Sh1sh1R017/RescueMesh/raw/main/releases/RescueMesh-arm64-v8a-release.apk)
-[<img src="https://img.shields.io/badge/📲_DOWNLOAD_APK-ARMv7_32--bit_(36.9_MB)-1b5e20?style=for-the-badge&logo=android&logoColor=white" height="42"/>](https://github.com/Sh1sh1R017/RescueMesh/raw/main/releases/RescueMesh-armeabi-v7a-release.apk)
 [<img src="https://img.shields.io/badge/💻_DOWNLOAD_APK-x86__64_Emulator_(53.8_MB)-1565c0?style=for-the-badge&logo=android&logoColor=white" height="42"/>](https://github.com/Sh1sh1R017/RescueMesh/raw/main/releases/RescueMesh-x86_64-release.apk)
+
 
 <br/><br/>
 

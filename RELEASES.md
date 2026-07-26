@@ -14,8 +14,8 @@ The compiled production APK binaries are committed directly to this GitHub repos
 | Architecture | APK File | Size | Compatible Devices |
 |---|---|---|---|
 | 📱 **ARM 64-bit** (Standard) | [`RescueMesh-arm64-v8a-release.apk`](releases/RescueMesh-arm64-v8a-release.apk) | **56.7 MB** | 95%+ of modern Android smartphones |
-| 📱 **ARM 32-bit** (Legacy) | [`RescueMesh-armeabi-v7a-release.apk`](releases/RescueMesh-armeabi-v7a-release.apk) | **36.9 MB** | Older 32-bit Android phones |
 | 💻 **x86_64** (Emulator) | [`RescueMesh-x86_64-release.apk`](releases/RescueMesh-x86_64-release.apk) | **53.8 MB** | Android Studio emulators & x86 tablets |
+
 
 ---
 
