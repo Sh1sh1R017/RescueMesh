@@ -45,22 +45,23 @@ class MeshService {
   }
 
   Future<bool> _requestPermissions() async {
-    // Permission.bluetooth is Android SDK <31 legacy; on Android 12+ only
-    // bluetoothAdvertise/Connect/Scan are needed. We include it for broad
-    // compatibility but don't fail if it's denied (which happens on Android 12+).
-    final statuses = await [
-      Permission.bluetooth,
-      Permission.bluetoothAdvertise,
-      Permission.bluetoothConnect,
-      Permission.bluetoothScan,
-      Permission.location,
-    ].request();
+    try {
+      final statuses = await [
+        Permission.bluetooth,
+        Permission.bluetoothAdvertise,
+        Permission.bluetoothConnect,
+        Permission.bluetoothScan,
+        Permission.location,
+      ].request();
 
-    // Only require the Android 12+ permissions — bluetooth legacy may be denied
-    return statuses[Permission.bluetoothAdvertise]?.isGranted == true &&
-        statuses[Permission.bluetoothConnect]?.isGranted == true &&
-        statuses[Permission.bluetoothScan]?.isGranted == true &&
-        statuses[Permission.location]?.isGranted == true;
+      return statuses[Permission.bluetoothAdvertise]?.isGranted == true &&
+          statuses[Permission.bluetoothConnect]?.isGranted == true &&
+          statuses[Permission.bluetoothScan]?.isGranted == true &&
+          statuses[Permission.location]?.isGranted == true;
+    } catch (e) {
+      debugPrint('Error requesting BLE permissions: $e');
+      return false;
+    }
   }
 
   Future<void> startAdvertising() async {
