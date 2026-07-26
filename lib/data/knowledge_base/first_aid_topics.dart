@@ -245,8 +245,46 @@ const List<FirstAidTopic> kFirstAidTopics = [
     keywords: [
       'crowd', 'crush', 'stampede', 'trampled', 'compressed', 'suffocate',
       'asphyxia', 'pushed', 'fell', 'fallen', 'crowd surge', 'kettle', 'cordon',
+      'low oxygen', 'oxygen', 'hypoxia', 'suffocating', 'gasping', 'air',
     ],
   ),
+
+  // ─────────────────────────────────────────────
+  // 5B. SMOKE INHALATION & HYPOXIA (LOW OXYGEN)
+  // ─────────────────────────────────────────────
+  FirstAidTopic(
+    title: 'Smoke Inhalation & Hypoxia (Low Oxygen)',
+    category: 'Respiratory Emergency',
+    summary:
+        'Inhaling fire smoke, carbon monoxide, or toxic fumes causes acute oxygen deprivation (hypoxia), lung tissue burns, and asphyxiation. Immediate evacuation to fresh air is vital.',
+    steps: [
+      'EVACUATE IMMEDIATELY: Move out of the smoke zone to fresh outdoor air. Stay LOW to the ground — clean oxygen stays below rising toxic smoke.',
+      'COVER MOUTH & NOSE: Breathe through a damp cloth or wet shirt to filter out coarse soot particles.',
+      'ASSESS BREATHING: Check for gasping, hoarseness, stridor, or coughing up black soot.',
+      'POSITIONING: If conscious, sit upright to maximize lung expansion. Do NOT lay flat if struggling for air.',
+      'IF UNCONSCIOUS BUT BREATHING: Place in recovery position on their side to keep airway open and clear of soot/vomit.',
+      'IF NOT BREATHING: Begin CPR immediately (30 chest compressions to 2 rescue breaths).',
+      'LOOSEN RESTRAINING CLOTHING: Unbutton collars, belts, and tight chest gear.',
+      'MONITOR: Check breathing, skin color (bluish lips/fingernails indicate severe hypoxia), and alertness every 60 seconds.',
+    ],
+    contraindications: [
+      'Do NOT stay inside a smoky enclosure to retrieve belongings.',
+      'Do NOT stand upright in thick smoke — toxic gas concentrations are highest near the ceiling.',
+      'Do NOT give food or drink to someone struggling to breathe.',
+    ],
+    whenToEvacuate: [
+      'Soot around nostrils, mouth, or in saliva.',
+      'Hoarse voice, gasping, or high-pitched noisy breathing (stridor).',
+      'Confusion, lethargy, or loss of consciousness.',
+      'All fire smoke inhalation victims require hospital evaluation.',
+    ],
+    keywords: [
+      'low oxygen', 'oxygen', 'hypoxia', 'smoke', 'inhalation', 'suffocating',
+      'can\'t breathe', 'cant breathe', 'choking', 'fire smoke', 'asphyxia',
+      'carbon monoxide', 'fumes', 'soot', 'gasping for air', 'no air',
+    ],
+  ),
+
 
   // ─────────────────────────────────────────────
   // 6. HEAD INJURIES & CONCUSSION
