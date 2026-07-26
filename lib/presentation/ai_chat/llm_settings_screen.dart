@@ -12,7 +12,7 @@ import '../../providers/llm_provider.dart';
 ///   • Per-tier download progress with mesh IP input
 ///   • Load model button
 class LlmSettingsScreen extends ConsumerStatefulWidget {
-  const LlmSettingsScreen({Key? key}) : super(key: key);
+  const LlmSettingsScreen({super.key});
 
   @override
   ConsumerState<LlmSettingsScreen> createState() => _LlmSettingsScreenState();
@@ -20,6 +20,27 @@ class LlmSettingsScreen extends ConsumerStatefulWidget {
 
 class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
   final TextEditingController _urlController = TextEditingController();
+
+  static const _modelTileConfigs = [
+    (
+      tier: ModelTier.base,
+      title: 'Base Model (0.5B) — Failsafe',
+      subtitle: 'Qwen2.5-0.5B-Instruct-Q4_K_M • ~490 MB',
+      minRam: '2 GB RAM minimum',
+    ),
+    (
+      tier: ModelTier.enhancement1,
+      title: 'Enhancement Pack 1 (1.5B)',
+      subtitle: 'Qwen2.5-1.5B-Instruct-Q4_K_M • ~1.1 GB',
+      minRam: '6 GB RAM required',
+    ),
+    (
+      tier: ModelTier.enhancement2,
+      title: 'Enhancement Pack 2 (3B)',
+      subtitle: 'Qwen2.5-3B-Instruct-Q4_K_M • ~1.9 GB',
+      minRam: '8 GB RAM required',
+    ),
+  ];
 
   @override
   void initState() {
@@ -66,27 +87,14 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
             const SizedBox(height: 16),
             _buildSectionLabel('MODEL PACKS'),
             const SizedBox(height: 8),
-            _buildModelTileForTier(
-              tier: ModelTier.base,
-              title: 'Base Model (0.5B) — Failsafe',
-              subtitle: 'Qwen2.5-0.5B-Instruct-Q4_K_M • ~490 MB',
-              minRam: '2 GB RAM minimum',
-              hardwareAsync: hardwareAsync,
-            ),
-            _buildModelTileForTier(
-              tier: ModelTier.enhancement1,
-              title: 'Enhancement Pack 1 (1.5B)',
-              subtitle: 'Qwen2.5-1.5B-Instruct-Q4_K_M • ~1.1 GB',
-              minRam: '6 GB RAM required',
-              hardwareAsync: hardwareAsync,
-            ),
-            _buildModelTileForTier(
-              tier: ModelTier.enhancement2,
-              title: 'Enhancement Pack 2 (3B)',
-              subtitle: 'Qwen2.5-3B-Instruct-Q4_K_M • ~1.9 GB',
-              minRam: '8 GB RAM required',
-              hardwareAsync: hardwareAsync,
-            ),
+            for (final cfg in _modelTileConfigs)
+              _buildModelTileForTier(
+                tier: cfg.tier,
+                title: cfg.title,
+                subtitle: cfg.subtitle,
+                minRam: cfg.minRam,
+                hardwareAsync: hardwareAsync,
+              ),
             const SizedBox(height: 24),
             _buildLoadButton(hardwareAsync, loaderState),
             const SizedBox(height: 32),

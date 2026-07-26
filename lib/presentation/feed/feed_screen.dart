@@ -1,34 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/time_utils.dart';
+import '../../core/constants/packet_constants.dart';
 import '../../providers/message_provider.dart';
 import '../../providers/device_identity_provider.dart';
 import '../../domain/models/mesh_packet.dart';
 
 class FeedScreen extends ConsumerWidget {
-  const FeedScreen({Key? key}) : super(key: key);
+  const FeedScreen({super.key});
 
   IconData _getIconForType(int type) {
     switch (type) {
-      case 1: return Icons.medical_services;
-      case 2: return Icons.warning_amber_rounded;
-      case 4: return Icons.water_drop;
-      default: return Icons.message;
+      case PacketType.sos:
+        return Icons.medical_services;
+      case PacketType.report:
+        return Icons.warning_amber_rounded;
+      case PacketType.resource:
+        return Icons.water_drop;
+      default:
+        return Icons.message;
     }
   }
 
   Color _getColorForType(int type, BuildContext context) {
-    if (type == 1) return AppTheme.criticalColor;
+    if (type == PacketType.sos) return AppTheme.criticalColor;
     return Theme.of(context).colorScheme.onSurface;
   }
 
   String _getTypeString(int type) {
     switch (type) {
-      case 1: return 'SOS';
-      case 2: return 'Report';
-      case 3: return 'Missing';
-      case 4: return 'Resource';
-      default: return 'Chat';
+      case PacketType.sos:
+        return 'SOS';
+      case PacketType.report:
+        return 'Report';
+      case PacketType.missing:
+        return 'Missing';
+      case PacketType.resource:
+        return 'Resource';
+      default:
+        return 'Chat';
     }
   }
 
@@ -63,9 +74,7 @@ class FeedScreen extends ConsumerWidget {
                 final packet = messages[index];
                 final color = _getColorForType(packet.type, context);
                 final typeStr = _getTypeString(packet.type);
-                
-                final diff = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(packet.timestamp));
-                final timeStr = diff.inMinutes > 60 ? '${diff.inHours}h ago' : '${diff.inMinutes}m ago';
+                final timeStr = relativeTime(packet.timestamp);
 
                 return ListTile(
                   leading: Icon(_getIconForType(packet.type), color: color, size: 28),
@@ -140,7 +149,7 @@ class FeedScreen extends ConsumerWidget {
 
   void _showComposeDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -161,24 +170,24 @@ class FeedScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () async {
               if (controller.text.trim().isEmpty) return;
-              
+
               final syncEngine = ref.read(syncEngineProvider);
               final nodeId = ref.read(deviceIdentityProvider);
-              
+
               final packet = MeshPacket(
                 msgId: 'msg_${DateTime.now().millisecondsSinceEpoch}',
                 originNodeId: nodeId,
-                type: 5, // Chat
-                priority: 1, // NORMAL
+                type: PacketType.chat,
+                priority: PacketPriority.normal,
                 timestamp: DateTime.now().millisecondsSinceEpoch,
-                ttl: 86400000,
+                ttl: kDefaultTtlMs,
                 hopCount: 0,
                 payload: controller.text.trim(),
               );
-              
+
               await syncEngine.queueOutgoingPacket(packet);
               ref.invalidate(messagesRefreshProvider);
-              
+
               if (dialogContext.mounted) {
                 Navigator.pop(dialogContext);
               }

@@ -1,51 +1,47 @@
 import 'package:battery_plus/battery_plus.dart';
+import '../../core/constants/packet_constants.dart';
 
-enum EnergyMode { PERFORMANCE, BALANCED, POWER_SAVER, ULTRA_LOW_POWER }
+enum EnergyMode { performance, balanced, powerSaver, ultraLowPower }
 
 class EnergyOptimizer {
   final Battery _battery = Battery();
+
+  static const Map<EnergyMode, double> _modeProbability = {
+    EnergyMode.performance: 1.0,
+    EnergyMode.balanced: 0.75,
+    EnergyMode.powerSaver: 0.50,
+    EnergyMode.ultraLowPower: 0.25,
+  };
+
+  static const double _criticalMinProbability = 0.50;
+  static const double _ultraLowPriorityFloor = 0.05;
 
   /// Determines the current energy mode based on battery percentage.
   Future<EnergyMode> getCurrentMode() async {
     final level = await _battery.batteryLevel;
 
-    if (level > 75) return EnergyMode.PERFORMANCE;
-    if (level > 40) return EnergyMode.BALANCED;
-    if (level > 15) return EnergyMode.POWER_SAVER;
-    return EnergyMode.ULTRA_LOW_POWER;
+    if (level > 75) return EnergyMode.performance;
+    if (level > 40) return EnergyMode.balanced;
+    if (level > 15) return EnergyMode.powerSaver;
+    return EnergyMode.ultraLowPower;
   }
 
   /// Calculates the probability (0.0 to 1.0) that we should relay a specific message.
   /// This implements the M4 - AI Energy Optimizer specification.
   Future<double> getRelayProbability(int messagePriority) async {
     final mode = await getCurrentMode();
-    double baseProbability;
+    final baseProbability = _modeProbability[mode] ?? 1.0;
 
-    switch (mode) {
-      case EnergyMode.PERFORMANCE:
-        baseProbability = 1.0;
-        break;
-      case EnergyMode.BALANCED:
-        baseProbability = 0.75;
-        break;
-      case EnergyMode.POWER_SAVER:
-        baseProbability = 0.50;
-        break;
-      case EnergyMode.ULTRA_LOW_POWER:
-        baseProbability = 0.25;
-        break;
+    // Critical messages bypass some probability limits to ensure propagation
+    if (messagePriority >= PacketPriority.critical) {
+      return baseProbability < _criticalMinProbability
+          ? _criticalMinProbability
+          : baseProbability;
     }
 
-    // Critical messages bypass some probability limits
-    if (messagePriority >= 3) { // 3 = CRITICAL
-      // CRITICAL floor is 0.20 at ULTRA_LOW_POWER, but we boost probability 
-      // significantly to ensure life-saving messages propagate.
-      return baseProbability < 0.50 ? 0.50 : baseProbability;
-    }
-    
     // Low priority messages on low battery get heavily throttled
-    if (messagePriority == 0 && mode == EnergyMode.ULTRA_LOW_POWER) {
-       return 0.05; // 5% chance to relay a non-emergency check-in on dead battery
+    if (messagePriority == PacketPriority.low && mode == EnergyMode.ultraLowPower) {
+      return _ultraLowPriorityFloor; // 5% chance to relay non-emergency check-in
     }
 
     return baseProbability;

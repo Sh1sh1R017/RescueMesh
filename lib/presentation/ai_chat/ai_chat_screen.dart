@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/services/first_aid_llm_service.dart';
 import '../../domain/services/llm_inference_service.dart';
@@ -54,6 +55,17 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final FirstAidLlmService _kbService = FirstAidLlmService();
 
   bool _useLlm = false; // Toggle: Knowledge Base vs. LLM
+
+  static const _suggestions = [
+    'Tear Gas / Eyes',
+    'Severe Bleeding',
+    'Rubber Bullet',
+    'Arrest Rights',
+    'Heat Stroke',
+    'Improvised Kit',
+    'Crowd Crush',
+    'CPR Steps',
+  ];
 
   @override
   void initState() {
@@ -204,17 +216,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     final inferState = ref.watch(inferenceStateProvider);
     final activeTier = ref.watch(activeTierProvider);
 
-    final suggestions = [
-      'Tear Gas / Eyes',
-      'Severe Bleeding',
-      'Rubber Bullet',
-      'Arrest Rights',
-      'Heat Stroke',
-      'Improvised Kit',
-      'Crowd Crush',
-      'CPR Steps',
-    ];
-
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
@@ -231,12 +232,12 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               scrollDirection: Axis.horizontal,
-              itemCount: suggestions.length,
+              itemCount: _suggestions.length,
               itemBuilder: (ctx, i) => Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: ActionChip(
                   label: Text(
-                    suggestions[i],
+                    _suggestions[i],
                     style: const TextStyle(
                         fontSize: 12, fontWeight: FontWeight.w600),
                   ),
@@ -244,7 +245,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                   side: BorderSide(color: theme.colorScheme.secondary),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4)),
-                  onPressed: () => _handleSubmitted(suggestions[i]),
+                  onPressed: () => _handleSubmitted(_suggestions[i]),
                 ),
               ),
             ),
@@ -285,15 +286,17 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.wifi_off, size: 13, color: Colors.grey),
-              const SizedBox(width: 6),
+              Icon(Icons.wifi_off, size: 13, color: Colors.grey),
+              SizedBox(width: 6),
               Text(
                 '100% OFFLINE',
-                style: theme.textTheme.labelSmall?.copyWith(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.8,
+                  fontSize: 11,
+                  color: Colors.grey,
                 ),
               ),
             ],
@@ -314,6 +317,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Widget _buildModeToggleBar(ThemeData theme) {
+    final color = _useLlm ? const Color(0xFF00E5FF) : Colors.orange;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: theme.colorScheme.surface,
@@ -327,14 +331,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _useLlm
-                    ? const Color(0xFF00E5FF).withValues(alpha: 0.15)
-                    : Colors.orange.withValues(alpha: 0.12),
-                border: Border.all(
-                  color:
-                      _useLlm ? const Color(0xFF00E5FF) : Colors.orange,
-                  width: 1,
-                ),
+                color: color.withValues(alpha: _useLlm ? 0.15 : 0.12),
+                border: Border.all(color: color, width: 1),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -343,7 +341,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                   Icon(
                     _useLlm ? Icons.memory : Icons.library_books,
                     size: 14,
-                    color: _useLlm ? const Color(0xFF00E5FF) : Colors.orange,
+                    color: color,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -351,19 +349,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: _useLlm
-                          ? const Color(0xFF00E5FF)
-                          : Colors.orange,
+                      color: color,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(
-                    Icons.swap_horiz,
-                    size: 14,
-                    color: _useLlm
-                        ? const Color(0xFF00E5FF)
-                        : Colors.orange,
-                  ),
+                  Icon(Icons.swap_horiz, size: 14, color: color),
                 ],
               ),
             ),
@@ -503,9 +493,18 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 ),
                 border: Border.all(color: borderColor, width: 1),
               ),
+              // ── Replaced 134-line hand-rolled markdown parser ──
+              // flutter_markdown handles bold, headers, bullets,
+              // numbered lists, and inline code correctly.
               child: message.isStreaming && message.text.isEmpty
                   ? _buildThinkingIndicator()
-                  : _buildRichTextContent(message.text),
+                  : isUser
+                      ? Text(message.text, style: theme.textTheme.bodyLarge)
+                      : MarkdownBody(
+                          data: message.text,
+                          styleSheet: _markdownStyleSheet(theme),
+                          softLineBreak: true,
+                        ),
             ),
           ),
         ],
@@ -534,142 +533,20 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // Markdown renderer (preserved from original)
-  // ─────────────────────────────────────────────
-
-  Widget _buildRichTextContent(String text) {
-    final theme = Theme.of(context);
-    final lines = text.split('\n');
-    final children = <Widget>[];
-
-    for (final line in lines) {
-      if (line.trim().isEmpty) continue;
-
-      if (line.startsWith('### ')) {
-        children.add(Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 4),
-          child: Text(
-            line.replaceFirst('### ', ''),
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ));
-      } else if (line.startsWith('*Category:') ||
-          line.startsWith('*') && line.endsWith('*')) {
-        children.add(Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            line.replaceAll('*', ''),
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: Colors.grey,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ));
-      } else if (line.startsWith('**⚠️') ||
-          line.startsWith('**🚑') ||
-          line.startsWith('**📋')) {
-        final cleaned = line.replaceAll('**', '');
-        final Color headerColor = line.contains('⚠️')
-            ? AppTheme.criticalColor
-            : line.contains('🚑')
-                ? Colors.orange
-                : theme.colorScheme.onSurface;
-        children.add(Padding(
-          padding: const EdgeInsets.only(top: 12, bottom: 4),
-          child: Text(
-            cleaned,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: headerColor,
-            ),
-          ),
-        ));
-      } else if (line.startsWith('**')) {
-        children.add(Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 4),
-          child: Text(
-            line.replaceAll('**', ''),
-            style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.bold),
-          ),
-        ));
-      } else if (line.startsWith('* Do NOT') || line.startsWith('* Do')) {
-        children.add(Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('• ',
-                  style: TextStyle(
-                      color: AppTheme.criticalColor,
-                      fontWeight: FontWeight.bold)),
-              Expanded(
-                child: Text(
-                  line.replaceFirst('* ', '').replaceAll('**', ''),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.criticalColor,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ));
-      } else if (line.startsWith('* ')) {
-        children.add(Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('• ',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              Expanded(
-                child: Text(
-                  line.replaceFirst('* ', '').replaceAll('**', ''),
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ),
-            ],
-          ),
-        ));
-      } else if (RegExp(r'^\d+\. ').hasMatch(line)) {
-        final match = RegExp(r'^(\d+\. )(.*)').firstMatch(line);
-        final numPrefix = match?.group(1) ?? '';
-        final restText = match?.group(2) ?? '';
-        children.add(Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(numPrefix,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              Expanded(
-                child: Text(
-                  restText.replaceAll('**', ''),
-                  style: theme.textTheme.bodyLarge,
-                ),
-              ),
-            ],
-          ),
-        ));
-      } else {
-        children.add(Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            line.replaceAll('**', '').replaceAll('*', ''),
-            style: theme.textTheme.bodyLarge,
-          ),
-        ));
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: children,
+  /// Styles for flutter_markdown to match the app's dark theme.
+  MarkdownStyleSheet _markdownStyleSheet(ThemeData theme) {
+    return MarkdownStyleSheet.fromTheme(theme).copyWith(
+      h3: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+      strong: const TextStyle(fontWeight: FontWeight.bold),
+      em: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+      p: theme.textTheme.bodyMedium,
+      listBullet: theme.textTheme.bodyMedium,
+      blockquoteDecoration: BoxDecoration(
+        color: AppTheme.criticalColor.withValues(alpha: 0.1),
+        border: const Border(
+          left: BorderSide(color: AppTheme.criticalColor, width: 3),
+        ),
+      ),
     );
   }
 }
@@ -691,7 +568,7 @@ class _ModelTierBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _color();
+    final color = _colorForTier(tier);
     final isActive = status != InferenceStatus.unloaded;
 
     if (!isActive) {
@@ -740,7 +617,7 @@ class _ModelTierBadge extends StatelessWidget {
     );
   }
 
-  Color _color() {
+  static Color _colorForTier(ModelTier tier) {
     switch (tier) {
       case ModelTier.base:
         return Colors.orange;

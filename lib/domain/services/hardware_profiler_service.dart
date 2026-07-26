@@ -14,6 +14,42 @@ enum ModelTier {
   enhancement2,
 }
 
+// ─────────────────────────────────────────────
+// Tier specification — single source of truth
+// ─────────────────────────────────────────────
+
+class _TierSpec {
+  final String label;
+  final String filename;
+  final int approxBytes;
+  const _TierSpec(this.label, this.filename, this.approxBytes);
+}
+
+const _kMb = 1024 * 1024;
+const _kGb = 1024 * 1024 * 1024;
+
+const Map<ModelTier, _TierSpec> _kTierSpecs = {
+  ModelTier.base: _TierSpec(
+    '0.5B',
+    'Qwen2.5-0.5B-Instruct-Q4_K_M.gguf',
+    490 * _kMb,
+  ),
+  ModelTier.enhancement1: _TierSpec(
+    '1.5B',
+    'Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
+    1100 * _kMb,
+  ),
+  ModelTier.enhancement2: _TierSpec(
+    '3B',
+    'Qwen2.5-3B-Instruct-Q4_K_M.gguf',
+    1900 * _kMb,
+  ),
+};
+
+// Tier RAM thresholds
+const double _kEnhancement2MinGb = 8.0;
+const double _kEnhancement1MinGb = 6.0;
+
 /// Result from a hardware profiling pass.
 class HardwareProfile {
   final int totalRamBytes;
@@ -30,7 +66,7 @@ class HardwareProfile {
     required this.recommendedTier,
   });
 
-  double get totalRamGb => totalRamBytes / (1024 * 1024 * 1024);
+  double get totalRamGb => totalRamBytes / _kGb;
 
   /// Number of llama.cpp threads — capped at physical cores minus 1
   /// to leave headroom for the UI thread and prevent thermal throttling.
@@ -98,10 +134,9 @@ class HardwareProfilerService {
 
   /// Determines the maximum model tier this device can safely run.
   static ModelTier _tierForRam(int totalRamBytes) {
-    final gb = totalRamBytes / (1024 * 1024 * 1024);
-    if (gb >= 8.0) return ModelTier.enhancement2;
-    if (gb >= 6.0) return ModelTier.enhancement1;
-    // < 4 GB or 4–6 GB: only the base 0.5B model is safe
+    final gb = totalRamBytes / _kGb;
+    if (gb >= _kEnhancement2MinGb) return ModelTier.enhancement2;
+    if (gb >= _kEnhancement1MinGb) return ModelTier.enhancement1;
     return ModelTier.base;
   }
 
@@ -111,47 +146,26 @@ class HardwareProfilerService {
     try {
       final bytes = await _channel.invokeMethod<int>('getTotalRamBytes');
       if (bytes != null && bytes > 0) return bytes;
-    } catch (e) {
+    } catch (_) {
       // Channel not yet implemented or running on emulator
     }
-
-    // Conservative fallback: assume low-memory device
-    return 3 * 1024 * 1024 * 1024; // 3 GB
+    return 3 * _kGb; // Conservative fallback: assume low-memory device
   }
 
-  /// Returns the human-readable label for a tier.
-  static String tierLabel(ModelTier tier) {
-    switch (tier) {
-      case ModelTier.base:
-        return '0.5B';
-      case ModelTier.enhancement1:
-        return '1.5B';
-      case ModelTier.enhancement2:
-        return '3B';
-    }
-  }
+  // ─────────────────────────────────────────────
+  // Tier metadata accessors — all driven by _kTierSpecs
+  // Replacing 3 separate switch statements (~30 lines) with map lookups.
+  // ─────────────────────────────────────────────
 
-  /// Returns the GGUF filename for a tier.
-  static String tierFilename(ModelTier tier) {
-    switch (tier) {
-      case ModelTier.base:
-        return 'Qwen2.5-0.5B-Instruct-Q4_K_M.gguf';
-      case ModelTier.enhancement1:
-        return 'Qwen2.5-1.5B-Instruct-Q4_K_M.gguf';
-      case ModelTier.enhancement2:
-        return 'Qwen2.5-3B-Instruct-Q4_K_M.gguf';
-    }
-  }
+  /// Human-readable model size label (e.g. "1.5B").
+  static String tierLabel(ModelTier tier) =>
+      _kTierSpecs[tier]!.label;
 
-  /// Approximate size in bytes for display in the UI.
-  static int tierApproxBytes(ModelTier tier) {
-    switch (tier) {
-      case ModelTier.base:
-        return 490 * 1024 * 1024;
-      case ModelTier.enhancement1:
-        return 1100 * 1024 * 1024;
-      case ModelTier.enhancement2:
-        return 1900 * 1024 * 1024;
-    }
-  }
+  /// GGUF filename for download and local storage.
+  static String tierFilename(ModelTier tier) =>
+      _kTierSpecs[tier]!.filename;
+
+  /// Approximate compressed size in bytes for UI progress display.
+  static int tierApproxBytes(ModelTier tier) =>
+      _kTierSpecs[tier]!.approxBytes;
 }

@@ -638,31 +638,31 @@ class FirstAidLlmService {
       }
 
       if (bestMatch.contraindications.isNotEmpty) {
-        buffer.writeln('\n**⚠️ CRITICAL — DO NOT DO:**');
-        for (var c in bestMatch.contraindications) {
-          buffer.writeln('* $c');
-        }
+        _writeBulletSection(buffer, '⚠️ CRITICAL — DO NOT DO:', bestMatch.contraindications);
       }
 
       if (bestMatch.whenToEvacuate.isNotEmpty) {
-        buffer.writeln('\n**🚑 EVACUATE / SEEK MEDICAL CARE IF:**');
-        for (var e in bestMatch.whenToEvacuate) {
-          buffer.writeln('* $e');
-        }
+        _writeBulletSection(buffer, '🚑 EVACUATE / SEEK MEDICAL CARE IF:', bestMatch.whenToEvacuate);
       }
 
       return buffer.toString();
     }
 
-    final suggestions = _knowledgeBase.map((t) => '* ${t.title}').join('\n');
+    final suggestions = topicTitles.map((title) => '* $title').join('\n');
     return '### 🧠 OFFLINE ASSISTANT: Topic Not Recognised\n\n'
         'I couldn\'t confidently match your query. I have detailed protocols for:\n\n'
         '$suggestions\n\n'
         '**Try asking:** *"tear gas eyes"*, *"severe bleeding"*, *"rubber bullet chest"*, *"crowd crush"*, *"arrest rights"*';
   }
 
-  /// Returns all topic titles for quick action chips in the UI.
-  List<String> getTopicTitles() {
-    return _knowledgeBase.map((t) => t.title).toList();
+  void _writeBulletSection(StringBuffer buffer, String header, List<String> items) {
+    buffer.writeln('\n**$header**');
+    for (final item in items) {
+      buffer.writeln('* $item');
+    }
   }
+
+  /// Returns all topic titles for quick action chips in the UI.
+  List<String> get topicTitles => _knowledgeBase.map((t) => t.title).toList();
 }
+

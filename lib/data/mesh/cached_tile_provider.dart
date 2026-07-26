@@ -50,6 +50,7 @@ class CachedTileProvider extends TileProvider {
     }
   }
 
+  @override
   String getTileUrl(TileCoordinates coordinates, TileLayer options) {
     return 'https://tile.openstreetmap.org/${coordinates.z}/${coordinates.x}/${coordinates.y}.png';
   }

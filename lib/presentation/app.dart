@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
+import '../core/constants/packet_constants.dart';
 import '../providers/mesh_provider.dart';
 
 // Screens
@@ -18,7 +19,7 @@ import '../providers/message_provider.dart';
 import '../data/mesh/sync_engine.dart';
 
 class RescueMeshApp extends ConsumerStatefulWidget {
-  const RescueMeshApp({Key? key}) : super(key: key);
+  const RescueMeshApp({super.key});
 
   @override
   ConsumerState<RescueMeshApp> createState() => _RescueMeshAppState();
@@ -48,7 +49,7 @@ class _RescueMeshAppState extends ConsumerState<RescueMeshApp> {
 }
 
 class MainDashboardScreen extends ConsumerStatefulWidget {
-  const MainDashboardScreen({Key? key}) : super(key: key);
+  const MainDashboardScreen({super.key});
 
   @override
   ConsumerState<MainDashboardScreen> createState() => _MainDashboardScreenState();
@@ -58,12 +59,20 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
   int _currentIndex = 0;
   StreamSubscription<MeshPacket>? _messageSubscription;
 
+  static const List<Widget> _screens = [
+    DashboardScreen(),
+    MapScreen(),
+    FeedScreen(),
+    ResourcesScreen(),
+    AiChatScreen(),
+  ];
+
   @override
   void initState() {
     super.initState();
     // Listen for new high priority messages over mesh network in background
     _messageSubscription = SyncEngine.messageStream.listen((packet) {
-      if (packet.priority >= 2 && packet.originNodeId != ref.read(deviceIdentityProvider)) {
+      if (packet.priority >= PacketPriority.high && packet.originNodeId != ref.read(deviceIdentityProvider)) {
         _showIncomingAlertNotification(packet);
       }
     });
@@ -77,14 +86,14 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
 
   void _showIncomingAlertNotification(MeshPacket packet) {
     if (!mounted) return;
-    final isSos = packet.type == 1;
+    final isSos = packet.type == PacketType.sos;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             Icon(
               isSos ? Icons.warning : Icons.info,
-              color: isSos ? Colors.red : Colors.orange,
+              color: isSos ? AppTheme.criticalColor : Colors.orange,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -116,18 +125,18 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
       final locString = await LocationService().getEmergencyLocationString();
       final nodeId = ref.read(deviceIdentityProvider);
       final syncEngine = ref.read(syncEngineProvider);
-      
+
       final packet = MeshPacket(
         msgId: 'sos_${DateTime.now().millisecondsSinceEpoch}',
         originNodeId: nodeId,
-        type: 1, // SOS
-        priority: 3, // CRITICAL
+        type: PacketType.sos,
+        priority: PacketPriority.critical,
         timestamp: DateTime.now().millisecondsSinceEpoch,
-        ttl: 86400000, // 24h
+        ttl: kDefaultTtlMs,
         hopCount: 0,
         payload: locString,
       );
-      
+
       final success = await syncEngine.queueOutgoingPacket(packet);
       if (success) {
         ref.invalidate(messagesRefreshProvider);
@@ -141,28 +150,23 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
     }
   }
 
-  final List<Widget> _screens = [
-    const DashboardScreen(),
-    const MapScreen(),
-    const FeedScreen(),
-    const ResourcesScreen(),
-    const AiChatScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final meshState = ref.watch(meshStateProvider);
-    final bool isConnected = meshState.connectedPeersCount > 0;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('RescueMesh'),
-        // No centered title, left aligned utility style via theme
       ),
       body: Column(
         children: [
           _buildGlobalStatusBar(meshState),
-          Expanded(child: _screens[_currentIndex]),
+          Expanded(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: _screens,
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -199,14 +203,16 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
           ),
         ],
       ),
-      floatingActionButton: _currentIndex == 0 ? SosButton(
-        onSosTriggered: () => _triggerSos(ref),
-      ) : null,
+      floatingActionButton: _currentIndex == 0
+          ? SosButton(
+              onSosTriggered: () => _triggerSos(ref),
+            )
+          : null,
     );
   }
 
   Widget _buildGlobalStatusBar(MeshState meshState) {
-    bool isConnected = meshState.connectedPeersCount > 0;
+    final bool isConnected = meshState.connectedPeersCount > 0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(

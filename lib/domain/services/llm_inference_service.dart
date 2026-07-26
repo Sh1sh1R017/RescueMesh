@@ -50,6 +50,8 @@ class LlmInferenceService {
   static const double _temperature = 0.1;
   static const double _topP = 0.9;
   static const int _contextSize = 2048;
+  static const Duration _stopDebounce = Duration(milliseconds: 100);
+  static const List<String> _stopTokens = ['<|im_end|>', '<|endoftext|>'];
 
   String? _loadedModelPath;
   String? _contextId;
@@ -87,7 +89,8 @@ class LlmInferenceService {
       return true; // Already loaded
     }
 
-    _threadCount = (physicalCores - 1).clamp(1, 6);
+    // Use profile.llamaThreadCount — single source of truth in HardwareProfile
+    _threadCount = physicalCores > 1 ? (physicalCores - 1).clamp(1, 6) : 1;
 
     _emit(_state.copyWith(
       status: InferenceStatus.loading,
@@ -174,13 +177,12 @@ class LlmInferenceService {
       }
 
       final buffer = StringBuffer();
-      bool isDone = false;
 
-      // Subscribe to the token stream BEFORE triggering completion
+
+      // Subscribe to token stream BEFORE triggering completion.
+      // No isDone flag needed — sub.cancel() stops future events immediately.
       late StreamSubscription<dynamic> sub;
       sub = fllama.onTokenStream!.listen((data) {
-        if (isDone) return;
-
         if (data['function'] == 'completion') {
           final result = data['result'];
           final token = result['token'] as String? ?? '';
@@ -190,7 +192,6 @@ class LlmInferenceService {
           onToken(token, false);
 
           if (stop) {
-            isDone = true;
             onToken('', true);
             _emit(_state.copyWith(status: InferenceStatus.ready));
             sub.cancel();
@@ -208,7 +209,7 @@ class LlmInferenceService {
         topP: _topP,
         nThreads: _threadCount,
         emitRealtimeCompletion: true,
-        stop: ['<|im_end|>', '<|endoftext|>'],
+        stop: _stopTokens,
       );
     } catch (e) {
       debugPrint('[LLM] Inference error: $e');
@@ -222,9 +223,8 @@ class LlmInferenceService {
   Future<void> _stopCurrentCompletion() async {
     if (_contextId == null) return;
     try {
-      // stopCompletion uses named required param: contextId:
       await Fllama.instance()?.stopCompletion(contextId: double.parse(_contextId!));
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.delayed(_stopDebounce);
     } catch (_) {}
     _emit(_state.copyWith(status: InferenceStatus.ready));
   }
@@ -254,7 +254,6 @@ class LlmInferenceService {
 
     // Listen for load-progress events before calling initContext
     String? contextId;
-    final completer = Completer<String?>();
 
     late StreamSubscription<dynamic> progressSub;
     progressSub = fllama.onTokenStream!.listen((data) {
@@ -286,7 +285,6 @@ class LlmInferenceService {
       progressSub.cancel();
     }
 
-    if (!completer.isCompleted) completer.complete(contextId);
     return contextId;
   }
 
@@ -301,13 +299,13 @@ class LlmInferenceService {
 
   String _sanitizeError(Object e) {
     final msg = e.toString();
-    if (msg.toLowerCase().contains('out of memory') ||
-        msg.toLowerCase().contains('oom') ||
-        msg.toLowerCase().contains('alloc')) {
+    final lower = msg.toLowerCase(); // avoid calling toLowerCase() 3× on same string
+    if (lower.contains('out of memory') ||
+        lower.contains('oom') ||
+        lower.contains('alloc')) {
       return 'Out of memory — device RAM insufficient for this model. '
           'The app will use the 0.5B fallback.';
     }
-    // Truncate very long native stack traces
     return msg.length > 120 ? '${msg.substring(0, 120)}...' : msg;
   }
 

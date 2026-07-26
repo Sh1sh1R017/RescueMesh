@@ -4,6 +4,12 @@ import '../domain/services/model_download_service.dart';
 import '../domain/services/llm_inference_service.dart';
 
 // ─────────────────────────────────────────────
+// Single source of truth for the default mesh URL
+// ─────────────────────────────────────────────
+
+const String kDefaultMeshBaseUrl = 'http://192.168.4.1:8080/models/';
+
+// ─────────────────────────────────────────────
 // Shared service instances
 // ─────────────────────────────────────────────
 
@@ -33,7 +39,7 @@ final hardwareProfileProvider = FutureProvider<HardwareProfile>((ref) async {
 
 class MeshUrlNotifier extends Notifier<String> {
   @override
-  String build() => 'http://192.168.4.1:8080/models/';
+  String build() => kDefaultMeshBaseUrl;
 
   void setUrl(String url) {
     // Ensure trailing slash
@@ -49,19 +55,10 @@ final meshUrlProvider = NotifierProvider<MeshUrlNotifier, String>(
 );
 
 // ─────────────────────────────────────────────
-// Active model tier selection
+// Active model tier — replaced 10-line Notifier class with StateProvider
 // ─────────────────────────────────────────────
 
-class ActiveTierNotifier extends Notifier<ModelTier> {
-  @override
-  ModelTier build() => ModelTier.base;
-
-  void setTier(ModelTier tier) => state = tier;
-}
-
-final activeTierProvider = NotifierProvider<ActiveTierNotifier, ModelTier>(
-  ActiveTierNotifier.new,
-);
+final activeTierProvider = StateProvider<ModelTier>((_) => ModelTier.base);
 
 // ─────────────────────────────────────────────
 // Download state per tier (streamed)
@@ -105,7 +102,8 @@ class ModelLoaderNotifier extends AsyncNotifier<void> {
       final inference = ref.read(llmInferenceServiceProvider);
       final profile = await ref.read(hardwareProfileProvider.future);
 
-      // Walk down tiers until we find one that exists locally
+      // Walk tiers from requested down to base — use ModelTier.values so
+      // adding a new tier never requires updating this method.
       final tierOrder = _tiersFromHighestTo(requestedTier);
       String? targetPath;
       ModelTier targetTier = ModelTier.base;
@@ -123,7 +121,6 @@ class ModelLoaderNotifier extends AsyncNotifier<void> {
       final basePath = await downloader.getLocalModelPath(ModelTier.base);
 
       if (targetPath == null) {
-        // No model downloaded at all — update UI state only
         state = AsyncError(
           'No model file found. Please download a model from the Settings screen.',
           StackTrace.current,
@@ -139,7 +136,7 @@ class ModelLoaderNotifier extends AsyncNotifier<void> {
       );
 
       if (success) {
-        ref.read(activeTierProvider.notifier).setTier(inference.activeTier);
+        ref.read(activeTierProvider.notifier).state = inference.activeTier;
         state = const AsyncData(null);
       } else {
         state = AsyncError(
@@ -152,18 +149,14 @@ class ModelLoaderNotifier extends AsyncNotifier<void> {
     }
   }
 
-  /// Returns tiers from [highest] down to [ModelTier.base] so we try the
-  /// best available model first.
-  List<ModelTier> _tiersFromHighestTo(ModelTier highest) {
-    switch (highest) {
-      case ModelTier.enhancement2:
-        return [ModelTier.enhancement2, ModelTier.enhancement1, ModelTier.base];
-      case ModelTier.enhancement1:
-        return [ModelTier.enhancement1, ModelTier.base];
-      case ModelTier.base:
-        return [ModelTier.base];
-    }
-  }
+  /// Returns tiers from [highest] down to [ModelTier.base].
+  /// Driven by ModelTier.values so adding a new tier is automatic.
+  static List<ModelTier> _tiersFromHighestTo(ModelTier highest) =>
+      ModelTier.values
+          .where((t) => t.index <= highest.index)
+          .toList()
+          .reversed
+          .toList();
 }
 
 final modelLoaderProvider =

@@ -1,39 +1,29 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
 
 class ResourcesScreen extends StatelessWidget {
-  const ResourcesScreen({Key? key}) : super(key: key);
+  const ResourcesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: DefaultTabController(
-        length: 2,
-        child: Column(
-          children: [
-            const TabBar(
-              tabs: [
-                Tab(text: 'Available'),
-                Tab(text: 'Needed'),
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          const TabBar(
+            tabs: [
+              Tab(text: 'Available'),
+              Tab(text: 'Needed'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildAvailableList(),
+                _buildNeededList(context),
               ],
             ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _buildAvailableList(),
-                  _buildNeededList(context),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Open share resource form
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Share Resource'),
+          ),
+        ],
       ),
     );
   }
@@ -67,7 +57,7 @@ class ResourcesScreen extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon),
@@ -93,9 +83,11 @@ class ResourcesScreen extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildNeededCard(BuildContext context, String title, String desc, String priority) {
-    Color pColor = priority == 'Critical' ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary;
+    final Color pColor = priority == 'Critical'
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.primary;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -103,7 +95,7 @@ class ResourcesScreen extends StatelessWidget {
         subtitle: Text(desc),
         trailing: Chip(
           label: Text(priority, style: TextStyle(color: pColor, fontSize: 12)),
-          backgroundColor: pColor.withOpacity(0.2),
+          backgroundColor: pColor.withValues(alpha: 0.2),
           side: BorderSide.none,
         ),
       ),

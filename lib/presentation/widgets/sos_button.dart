@@ -4,7 +4,7 @@ import '../../core/theme/app_theme.dart';
 class SosButton extends StatelessWidget {
   final Future<bool> Function() onSosTriggered;
 
-  const SosButton({Key? key, required this.onSosTriggered}) : super(key: key);
+  const SosButton({super.key, required this.onSosTriggered});
 
   @override
   Widget build(BuildContext context) {
@@ -26,28 +26,29 @@ class SosButton extends StatelessWidget {
     showDialog(
       context: context,
       builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
         return AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
+          backgroundColor: theme.colorScheme.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(4),
             side: const BorderSide(color: AppTheme.criticalColor, width: 2),
           ),
           title: const Text(
-            'TRIGGER SOS', 
+            'TRIGGER SOS',
             style: TextStyle(
-              color: AppTheme.criticalColor, 
+              color: AppTheme.criticalColor,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.2,
-            )
+            ),
           ),
           content: Text(
             'This action will queue a high-priority emergency alert containing your exact location. It will be broadcast to all connected nodes.',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            style: TextStyle(color: theme.colorScheme.onSurface),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              style: TextButton.styleFrom(foregroundColor: Theme.of(context).textTheme.bodyMedium?.color),
+              style: TextButton.styleFrom(foregroundColor: theme.textTheme.bodyMedium?.color),
               child: const Text('CANCEL'),
             ),
             ElevatedButton(
@@ -55,24 +56,7 @@ class SosButton extends StatelessWidget {
                 Navigator.of(dialogContext).pop();
                 final messenger = ScaffoldMessenger.of(context);
                 final success = await onSosTriggered();
-                
-                if (success) {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: const Text('SOS queued — will send when a peer connects.'),
-                      backgroundColor: Theme.of(context).colorScheme.surface,
-                      behavior: SnackBarBehavior.floating,
-                    )
-                  );
-                } else {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: const Text('SOS failed to queue. Please check location permissions.'),
-                      backgroundColor: Theme.of(context).colorScheme.error,
-                      behavior: SnackBarBehavior.floating,
-                    )
-                  );
-                }
+                _showResultSnackBar(messenger, theme, success);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.criticalColor,
@@ -83,6 +67,20 @@ class SosButton extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  void _showResultSnackBar(ScaffoldMessengerState messenger, ThemeData theme, bool success) {
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'SOS queued — will send when a peer connects.'
+              : 'SOS failed to queue. Please check location permissions.',
+        ),
+        backgroundColor: success ? theme.colorScheme.surface : theme.colorScheme.error,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 }

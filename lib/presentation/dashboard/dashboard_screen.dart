@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/mesh_provider.dart';
 import '../../providers/message_provider.dart';
 import '../../domain/services/fema_report_generator.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/time_utils.dart';
+import '../../core/constants/packet_constants.dart';
 
 class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,9 +38,13 @@ class DashboardScreen extends ConsumerWidget {
                 }
                 return Column(
                   children: alerts.map((packet) {
-                    final color = packet.priority == 3 ? AppTheme.criticalColor : Theme.of(context).colorScheme.onSurface;
-                    final icon = packet.type == 1 ? Icons.medical_services : Icons.warning_amber_rounded;
-                    final typeStr = packet.type == 1 ? 'SOS' : 'Alert';
+                    final color = packet.priority == PacketPriority.critical
+                        ? AppTheme.criticalColor
+                        : Theme.of(context).colorScheme.onSurface;
+                    final icon = packet.type == PacketType.sos
+                        ? Icons.medical_services
+                        : Icons.warning_amber_rounded;
+                    final typeStr = packet.type == PacketType.sos ? 'SOS' : 'Alert';
                     return _buildAlertItem(
                       typeStr,
                       packet.payload,
@@ -96,7 +101,7 @@ class DashboardScreen extends ConsumerWidget {
       onPressed: () async {
         final messages = await ref.read(messageRepositoryProvider).getRecentAlerts(limit: 100);
         final htmlSource = FemaReportGenerator().generateIcs213Html(messages);
-        
+
         if (context.mounted) {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -118,7 +123,7 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
-  
+
   Widget _buildRecentAlertsHeader() {
     return const Padding(
       padding: EdgeInsets.only(bottom: 12.0),
@@ -131,16 +136,15 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
-  
+
   Widget _buildAlertItem(String title, String subtitle, IconData icon, Color color, int timestamp) {
-    final diff = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(timestamp));
-    final timeStr = diff.inMinutes > 60 ? '${diff.inHours}h ago' : '${diff.inMinutes}m ago';
-    
+    final timeStr = relativeTime(timestamp);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
+          backgroundColor: color.withValues(alpha: 0.1),
           child: Icon(icon, color: color),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
