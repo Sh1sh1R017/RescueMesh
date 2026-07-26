@@ -80,13 +80,15 @@ class MeshService {
     }
   }
 
+  /// In-flight connection locks to prevent GATT 133 errors & race conditions
+  final Set<String> _connectingDeviceIds = <String>{};
+
   Future<void> startScanning() async {
     if (_isScanning) return;
 
     try {
       _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
         for (ScanResult r in results) {
-          // UUID is already uppercase constant — only normalise the incoming value
           if (r.advertisementData.serviceUuids
               .map((u) => u.toString().toUpperCase())
               .contains(rescueMeshServiceUuid)) {
@@ -97,7 +99,7 @@ class MeshService {
 
       await FlutterBluePlus.startScan(
         withServices: [Guid(rescueMeshServiceUuid)],
-        continuousUpdates: true,
+        continuousUpdates: false, // Prevents continuous 100% radio power draw
       );
       _isScanning = true;
       if (kDebugMode) debugPrint('Mesh Scanning Started');
@@ -107,15 +109,21 @@ class MeshService {
   }
 
   Future<void> _connectToPeer(BluetoothDevice device) async {
-    // Guard: already connected
-    if (_connectedPeers.contains(device)) return;
+    final String deviceId = device.remoteId.str;
+
+    // Guard: already connected OR connection in-flight
+    if (_connectedPeers.contains(device) || _connectingDeviceIds.contains(deviceId)) {
+      return;
+    }
+
+    _connectingDeviceIds.add(deviceId);
 
     try {
       await device.connect(
           autoConnect: false, timeout: const Duration(seconds: 5));
       _connectedPeers.add(device);
       _updatePeerCount();
-      if (kDebugMode) debugPrint('Connected to peer: ${device.remoteId}');
+      if (kDebugMode) debugPrint('Connected to peer: $deviceId');
 
       // Listen for unexpected disconnects — cancel characteristic subs too
       final connSub = device.connectionState.listen((state) {
@@ -131,12 +139,15 @@ class MeshService {
       await _syncWithPeer(device);
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('Connection failed to ${device.remoteId}: $e');
+        debugPrint('Connection failed to $deviceId: $e');
       }
       _connectedPeers.remove(device);
       _updatePeerCount();
+    } finally {
+      _connectingDeviceIds.remove(deviceId);
     }
   }
+
 
   /// Cleans up a disconnected peer's state and all its subscriptions.
   void _handlePeerDisconnect(BluetoothDevice device) {

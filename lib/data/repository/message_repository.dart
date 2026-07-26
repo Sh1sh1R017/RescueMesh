@@ -8,9 +8,10 @@ class MessageRepository {
     final db = await _db.database;
     final currentTime = DateTime.now().millisecondsSinceEpoch;
 
+    // Uses idx_messages_expires_at B-tree index for O(log N) lookup
     final List<Map<String, dynamic>> maps = await db.query(
       'messages',
-      where: 'timestamp + ttl > ?',
+      where: 'expires_at > ?',
       whereArgs: [currentTime],
       orderBy: 'timestamp DESC',
       limit: limit,
@@ -23,9 +24,10 @@ class MessageRepository {
     final db = await _db.database;
     final currentTime = DateTime.now().millisecondsSinceEpoch;
 
+    // Uses idx_messages_priority_expires index
     final List<Map<String, dynamic>> maps = await db.query(
       'messages',
-      where: 'timestamp + ttl > ? AND priority >= ?',
+      where: 'expires_at > ? AND priority >= ?',
       whereArgs: [currentTime, 1], // priority >= 1
       orderBy: 'priority DESC, timestamp DESC',
       limit: limit,

@@ -10,6 +10,7 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val CHANNEL = "com.rescuemesh/hardware"
+        private val CPU_PATTERN = Regex("cpu[0-9]+")
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -25,7 +26,6 @@ class MainActivity : FlutterActivity() {
                                 getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
                             val memInfo = ActivityManager.MemoryInfo()
                             am.getMemoryInfo(memInfo)
-                            // totalMem is total physical RAM in bytes
                             result.success(memInfo.totalMem)
                         } catch (e: Exception) {
                             result.error("RAM_ERROR", e.message, null)
@@ -34,14 +34,11 @@ class MainActivity : FlutterActivity() {
 
                     "getPhysicalCoreCount" -> {
                         try {
-                            // Runtime.availableProcessors() returns logical cores.
-                            // For physical-core estimation we read /sys/devices/system/cpu
-                            // and count unique core IDs (works on most Android devices).
                             val coreCount = try {
                                 val cpuDir =
                                     java.io.File("/sys/devices/system/cpu")
                                 val cpuFiles = cpuDir.listFiles { file ->
-                                    file.name.matches(Regex("cpu[0-9]+"))
+                                    CPU_PATTERN.matches(file.name)
                                 }
                                 cpuFiles?.size?.coerceAtLeast(1)
                                     ?: Runtime.getRuntime().availableProcessors()

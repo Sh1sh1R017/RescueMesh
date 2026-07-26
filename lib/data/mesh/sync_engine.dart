@@ -10,13 +10,18 @@ class SyncEngine {
   final AppDatabase _db = AppDatabase.instance;
   final EnergyOptimizer _energyOptimizer = EnergyOptimizer();
   final Random _random = Random();
-  
-  static const int maxHopCount = 8;
 
-  static final StreamController<MeshPacket> _messageStreamController = StreamController<MeshPacket>.broadcast();
+  static const int maxHopCount = 8;
+  static const int _maxSeenCacheSize = 5000;
+
+  /// Bounded in-memory hash set for nanosecond O(1) deduplication without disk reads.
+  final Set<String> _seenMsgIds = <String>{};
+
+  static final StreamController<MeshPacket> _messageStreamController =
+      StreamController<MeshPacket>.broadcast();
   static Stream<MeshPacket> get messageStream => _messageStreamController.stream;
 
-  /// Queues a locally generated packet for outward transmission
+  /// Queues a locally generated packet for outward transmission.
   Future<bool> queueOutgoingPacket(MeshPacket packet) async {
     final db = await _db.database;
     try {
@@ -25,80 +30,116 @@ class SyncEngine {
         packet.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
+      _seenMsgIds.add(packet.msgId);
       _messageStreamController.add(packet);
       return true;
     } catch (e) {
-      debugPrint('Error queueing outgoing packet: $e');
+      if (kDebugMode) debugPrint('Error queueing outgoing packet: $e');
       return false;
     }
   }
 
   /// Processes an incoming packet from another mesh node.
-  /// Deduplicates based on msg_id and inserts if new.
+  /// Fast O(1) in-memory check -> Direct SQLite insert with ConflictAlgorithm.ignore.
   Future<bool> processIncomingPacket(MeshPacket packet) async {
-    final db = await _db.database;
-
-    // Check if we already have this message
-    final List<Map<String, dynamic>> existing = await db.query(
-      'messages',
-      where: 'msg_id = ?',
-      whereArgs: [packet.msgId],
-    );
-
-    if (existing.isNotEmpty) {
-      // Duplicate, ignore.
+    // 1. Instant O(1) memory deduplication
+    if (_seenMsgIds.contains(packet.msgId)) {
       return false;
     }
 
-    // Insert new message
+    // 2. Reject expired packets immediately
+    if (packet.isExpired) {
+      return false;
+    }
+
+    final db = await _db.database;
+
     try {
-      await db.insert(
+      final rowsInserted = await db.insert(
         'messages',
         packet.toMap(),
         conflictAlgorithm: ConflictAlgorithm.ignore,
       );
-      _messageStreamController.add(packet);
-      return true; // Indicates this is a new message that should be forwarded further
+
+      _seenMsgIds.add(packet.msgId);
+      if (_seenMsgIds.length > _maxSeenCacheSize) {
+        _seenMsgIds.remove(_seenMsgIds.first); // Maintain bounded cache
+      }
+
+      if (rowsInserted > 0) {
+        _messageStreamController.add(packet);
+        return true; // New message to relay
+      }
+      return false;
     } catch (e) {
-      debugPrint('Error inserting incoming packet: $e');
+      if (kDebugMode) debugPrint('Error inserting incoming packet: $e');
       return false;
     }
   }
 
-  /// Retrieves messages that we need to send out.
-  /// Enforces Radio-Level Emergency Preemption by ordering by PRIORITY DESC.
-  /// Applies AI Energy Optimizer to probabilistically drop packets based on battery state.
+  /// Bulk batch processing for peer synchronization bursts.
+  Future<List<MeshPacket>> processIncomingBatch(List<MeshPacket> packets) async {
+    final db = await _db.database;
+    final List<MeshPacket> newPackets = [];
+
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (final packet in packets) {
+        if (!_seenMsgIds.contains(packet.msgId) && !packet.isExpired) {
+          batch.insert(
+            'messages',
+            packet.toMap(),
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+          _seenMsgIds.add(packet.msgId);
+          newPackets.add(packet);
+        }
+      }
+      await batch.commit(noResult: true);
+    });
+
+    for (final pkt in newPackets) {
+      _messageStreamController.add(pkt);
+    }
+    return newPackets;
+  }
+
+  /// Retrieves non-expired messages for relay transmission ordered by priority.
+  /// Uses B-tree indexed expires_at column.
   Future<List<MeshPacket>> getMessagesToForward({int limit = 50}) async {
     final db = await _db.database;
     final currentTime = DateTime.now().millisecondsSinceEpoch;
 
-    // Priority Queue: CRITICAL (3) drops before NORMAL (1)
+    // Uses idx_messages_priority_expires B-tree index
     final List<Map<String, dynamic>> maps = await db.query(
       'messages',
-      where: 'timestamp + ttl > ?', // Only fetch non-expired messages
+      where: 'expires_at > ?',
       whereArgs: [currentTime],
-      orderBy: 'priority DESC, timestamp ASC', // Emergency Preemption
+      orderBy: 'priority DESC, timestamp ASC',
       limit: limit,
     );
 
-    List<MeshPacket> packetsToForward = [];
+    final List<MeshPacket> packetsToForward = [];
 
-    for (var map in maps) {
-      MeshPacket packet = MeshPacket.fromMap(map);
-      
+    for (final map in maps) {
+      final MeshPacket packet = MeshPacket.fromMap(map);
+
       // M3: Check hop count limits
       if (packet.hopCount >= maxHopCount) {
-        debugPrint('Hop limit reached for packet ${packet.msgId}, dropping.');
+        if (kDebugMode) {
+          debugPrint('Hop limit reached for packet ${packet.msgId}, dropping.');
+        }
         continue;
       }
-      
+
       // M4: Apply AI Energy Optimizer policy
-      double relayProb = await _energyOptimizer.getRelayProbability(packet.priority);
-      double roll = _random.nextDouble();
-      
+      final double relayProb =
+          await _energyOptimizer.getRelayProbability(packet.priority);
+      final double roll = _random.nextDouble();
+
       if (roll <= relayProb) {
         packetsToForward.add(packet.copyWith(hopCount: packet.hopCount + 1));
-      } else {
+      } else if (kDebugMode) {
         debugPrint('Energy Optimizer dropped packet ${packet.msgId} to save battery.');
       }
     }

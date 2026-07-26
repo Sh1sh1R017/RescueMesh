@@ -152,15 +152,13 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final meshState = ref.watch(meshStateProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('RescueMesh'),
       ),
       body: Column(
         children: [
-          _buildGlobalStatusBar(meshState),
+          const GlobalStatusBar(),
           Expanded(
             child: IndexedStack(
               index: _currentIndex,
@@ -210,9 +208,19 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
           : null,
     );
   }
+}
 
-  Widget _buildGlobalStatusBar(MeshState meshState) {
-    final bool isConnected = meshState.connectedPeersCount > 0;
+/// Isolated status bar widget that uses Riverpod's select() to only rebuild itself when connected node count changes.
+class GlobalStatusBar extends ConsumerWidget {
+  const GlobalStatusBar({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connectedPeers = ref.watch(
+      meshStateProvider.select((s) => s.connectedPeersCount),
+    );
+    final bool isConnected = connectedPeers > 0;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -237,7 +245,7 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
             ],
           ),
           Text(
-            'NODES: ${meshState.connectedPeersCount}',
+            'NODES: $connectedPeers',
             style: Theme.of(context).textTheme.labelMedium,
           ),
         ],

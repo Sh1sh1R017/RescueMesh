@@ -68,9 +68,9 @@ class HardwareProfile {
 
   double get totalRamGb => totalRamBytes / _kGb;
 
-  /// Number of llama.cpp threads — capped at physical cores minus 1
+  /// Number of llama.cpp threads — capped at physical cores minus 1 (max 4)
   /// to leave headroom for the UI thread and prevent thermal throttling.
-  int get llamaThreadCount => (physicalCoreCount - 1).clamp(1, 6);
+  int get llamaThreadCount => (physicalCoreCount - 1).clamp(1, 4);
 
   @override
   String toString() =>

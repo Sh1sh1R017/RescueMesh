@@ -4,12 +4,16 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/constants/packet_constants.dart';
 import '../../data/mesh/cached_tile_provider.dart';
 import '../../providers/message_provider.dart';
 import '../../domain/models/mesh_packet.dart';
 
 class MapScreen extends ConsumerWidget {
-  const MapScreen({Key? key}) : super(key: key);
+  const MapScreen({super.key});
+
+  static final RegExp _locationRegExp =
+      RegExp(r'\[LAT: ([-\d.]+), LNG: ([-\d.]+)\]');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -44,32 +48,28 @@ class MapScreen extends ConsumerWidget {
                 ),
               ];
 
-              for (var packet in messages) {
-                final match = RegExp(r'\[LAT: ([-\d.]+), LNG: ([-\d.]+)\]').firstMatch(packet.payload);
+              for (final packet in messages) {
+                final match = _locationRegExp.firstMatch(packet.payload);
                 if (match != null) {
                   final lat = double.tryParse(match.group(1) ?? '');
                   final lng = double.tryParse(match.group(2) ?? '');
                   if (lat != null && lng != null) {
                     final latLng = LatLng(lat, lng);
-                    
+
                     // Choose icon and color based on message type/priority
                     IconData iconData;
                     Color markerColor;
-                    
-                    if (packet.type == 1) {
-                      // SOS
+
+                    if (packet.type == PacketType.sos) {
                       iconData = Icons.warning;
                       markerColor = AppTheme.criticalColor;
-                    } else if (packet.type == 2) {
-                      // Hazard / Report
+                    } else if (packet.type == PacketType.report) {
                       iconData = Icons.report_problem;
                       markerColor = Colors.orange;
-                    } else if (packet.type == 4) {
-                      // Resource
+                    } else if (packet.type == PacketType.resource) {
                       iconData = Icons.water_drop;
                       markerColor = Colors.green;
                     } else {
-                      // Default info marker
                       iconData = Icons.info;
                       markerColor = Colors.blueGrey;
                     }
@@ -118,7 +118,7 @@ class MapScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) {
         final date = DateTime.fromMillisecondsSinceEpoch(packet.timestamp);
-        final isSos = packet.type == 1;
+        final isSos = packet.type == PacketType.sos;
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           title: Row(

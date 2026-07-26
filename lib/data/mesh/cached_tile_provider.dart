@@ -6,10 +6,11 @@ import 'package:path/path.dart' as p;
 
 class CachedTileProvider extends TileProvider {
   static String? _cachePath;
+  static final Set<String> _cachedFileKeys = <String>{};
 
   CachedTileProvider();
 
-  /// Pre-initializes the cache directory subpath.
+  /// Pre-initializes the cache directory subpath and populates in-memory tile index.
   static Future<void> initialize() async {
     if (_cachePath != null) return;
     try {
@@ -18,8 +19,15 @@ class CachedTileProvider extends TileProvider {
       final directory = Directory(_cachePath!);
       if (!await directory.exists()) {
         await directory.create(recursive: true);
+      } else {
+        // Populate in-memory index asynchronously to eliminate main-thread file stats during map panning
+        final entities = await directory.list(recursive: true).toList();
+        for (final entity in entities) {
+          if (entity is File) {
+            _cachedFileKeys.add(entity.path);
+          }
+        }
       }
-      debugPrint('CachedTileProvider initialized directory at: $_cachePath');
     } catch (e) {
       debugPrint('Error initializing CachedTileProvider: $e');
     }
@@ -28,7 +36,6 @@ class CachedTileProvider extends TileProvider {
   @override
   ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
     if (_cachePath == null) {
-      // Fallback if not initialized yet
       return NetworkImage(getTileUrl(coordinates, options));
     }
 
@@ -39,12 +46,10 @@ class CachedTileProvider extends TileProvider {
       '${coordinates.y}.png',
     );
 
-    final file = File(tilePath);
-
-    if (file.existsSync()) {
-      return FileImage(file);
+    // Instant O(1) in-memory lookup without UI raster thread Disk I/O
+    if (_cachedFileKeys.contains(tilePath)) {
+      return FileImage(File(tilePath));
     } else {
-      // If file doesn't exist, download it in background and serve NetworkImage
       _downloadAndCache(coordinates, tilePath, options);
       return NetworkImage(getTileUrl(coordinates, options));
     }
@@ -71,10 +76,10 @@ class CachedTileProvider extends TileProvider {
         final file = File(tilePath);
         await file.parent.create(recursive: true);
         await file.writeAsBytes(bytes);
+        _cachedFileKeys.add(tilePath); // Update in-memory index
       }
       client.close();
     } catch (e) {
-      // Graceful failure (e.g. offline)
       debugPrint('Failed to download map tile to cache: $e');
     }
   }

@@ -36,8 +36,12 @@ class DashboardScreen extends ConsumerWidget {
                     child: Center(child: Text('No recent alerts found.')),
                   );
                 }
-                return Column(
-                  children: alerts.map((packet) {
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: alerts.length,
+                  itemBuilder: (context, index) {
+                    final packet = alerts[index];
                     final color = packet.priority == PacketPriority.critical
                         ? AppTheme.criticalColor
                         : Theme.of(context).colorScheme.onSurface;
@@ -52,8 +56,9 @@ class DashboardScreen extends ConsumerWidget {
                       color,
                       packet.timestamp,
                     );
-                  }).toList(),
+                  },
                 );
+
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, stack) => Center(child: Text('Error loading alerts: $err')),

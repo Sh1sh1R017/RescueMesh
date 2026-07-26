@@ -24,6 +24,12 @@ class MeshPacket {
     this.signature,
   });
 
+  /// Computed expiration timestamp in milliseconds.
+  int get expiresAt => timestamp + ttl;
+
+  /// Returns true if this packet has passed its TTL lifespan.
+  bool get isExpired => DateTime.now().millisecondsSinceEpoch >= expiresAt;
+
   MeshPacket copyWith({
     String? msgId,
     String? originNodeId,
@@ -56,6 +62,7 @@ class MeshPacket {
       'priority': priority,
       'timestamp': timestamp,
       'ttl': ttl,
+      'expires_at': expiresAt,
       'hop_count': hopCount,
       'payload': payload,
       'signature': signature,

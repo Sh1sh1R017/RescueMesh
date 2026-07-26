@@ -166,21 +166,28 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     _scrollToBottom();
 
     final buffer = StringBuffer();
+    DateTime lastTokenUpdate = DateTime.now();
 
     await inference.infer(
       userInput: query,
       onToken: (token, done) {
         if (!mounted) return;
         buffer.write(token);
-        setState(() {
-          _messages[placeholderIndex] = _messages[placeholderIndex].copyWith(
-            text: buffer.toString(),
-            isStreaming: !done,
-          );
-        });
-        if (done) _scrollToBottom();
+
+        final now = DateTime.now();
+        if (done || now.difference(lastTokenUpdate).inMilliseconds > 80) {
+          lastTokenUpdate = now;
+          setState(() {
+            _messages[placeholderIndex] = _messages[placeholderIndex].copyWith(
+              text: buffer.toString(),
+              isStreaming: !done,
+            );
+          });
+          if (done) _scrollToBottom();
+        }
       },
     );
+
   }
 
   void _addSystemMessage(String text) {

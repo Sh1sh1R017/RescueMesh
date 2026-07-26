@@ -3,6 +3,40 @@ import 'package:flutter/material.dart';
 class ResourcesScreen extends StatelessWidget {
   const ResourcesScreen({super.key});
 
+  static const _availableResources = [
+    (
+      title: 'Fresh Water',
+      desc: '100L available. Bring your own containers.',
+      dist: '0.5 km',
+      icon: Icons.water_drop,
+    ),
+    (
+      title: 'Generator Power',
+      desc: 'Running until 8PM. Charge phones/radios.',
+      dist: '1.2 km',
+      icon: Icons.electrical_services,
+    ),
+    (
+      title: 'First Aid Kits',
+      desc: 'Basic supplies, bandages, antiseptics.',
+      dist: '3.0 km',
+      icon: Icons.medical_services,
+    ),
+  ];
+
+  static const _neededResources = [
+    (
+      title: 'Baby Formula',
+      desc: 'Need formula for 6 month old.',
+      priority: 'High',
+    ),
+    (
+      title: 'Insulin',
+      desc: 'Type 1 Diabetic requires immediate insulin.',
+      priority: 'Critical',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -29,23 +63,24 @@ class ResourcesScreen extends StatelessWidget {
   }
 
   Widget _buildAvailableList() {
-    return ListView(
+    return ListView.builder(
       padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildResourceCard('Fresh Water', '100L available. Bring your own containers.', '0.5 km', Icons.water_drop),
-        _buildResourceCard('Generator Power', 'Running until 8PM. Charge phones/radios.', '1.2 km', Icons.electrical_services),
-        _buildResourceCard('First Aid Kits', 'Basic supplies, bandages, antiseptics.', '3.0 km', Icons.medical_services),
-      ],
+      itemCount: _availableResources.length,
+      itemBuilder: (context, index) {
+        final item = _availableResources[index];
+        return _buildResourceCard(item.title, item.desc, item.dist, item.icon);
+      },
     );
   }
 
   Widget _buildNeededList(BuildContext context) {
-    return ListView(
+    return ListView.builder(
       padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildNeededCard(context, 'Baby Formula', 'Need formula for 6 month old.', 'High'),
-        _buildNeededCard(context, 'Insulin', 'Type 1 Diabetic requires immediate insulin.', 'Critical'),
-      ],
+      itemCount: _neededResources.length,
+      itemBuilder: (context, index) {
+        final item = _neededResources[index];
+        return _buildNeededCard(context, item.title, item.desc, item.priority);
+      },
     );
   }
 

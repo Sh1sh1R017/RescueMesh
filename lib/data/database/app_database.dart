@@ -19,7 +19,12 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
+      onConfigure: (db) async {
+        // WAL mode enables concurrent reads while writing, preventing SQLITE_BUSY
+        await db.execute('PRAGMA journal_mode = WAL;');
+        await db.execute('PRAGMA synchronous = NORMAL;');
+      },
       onCreate: _createDB,
       onUpgrade: _onUpgradeDB,
     );
@@ -51,11 +56,16 @@ class AppDatabase {
         priority $_integerType,
         timestamp $_integerType,
         ttl $_integerType,
+        expires_at $_integerType,
         hop_count $_integerType,
         payload $_blobType,
         signature $_textNullable
       )
     ''');
+
+    // B-tree indexes for zero-latency queries during packet bursts
+    await db.execute('CREATE INDEX idx_messages_expires_at ON messages(expires_at);');
+    await db.execute('CREATE INDEX idx_messages_priority_expires ON messages(priority DESC, expires_at ASC);');
 
     // Reports Table (Parsed Map Data)
     await db.execute('''
@@ -69,6 +79,7 @@ class AppDatabase {
         verification_score $_integerType
       )
     ''');
+    await db.execute('CREATE INDEX idx_reports_category ON reports(category);');
 
     // SOS Requests Table
     await db.execute('''
@@ -80,6 +91,7 @@ class AppDatabase {
         timestamp $_integerType
       )
     ''');
+    await db.execute('CREATE INDEX idx_sos_status ON sos_requests(status);');
 
     // Missing Persons Table
     await db.execute('''
@@ -95,7 +107,26 @@ class AppDatabase {
   }
 
   Future<void> _onUpgradeDB(Database db, int oldVersion, int newVersion) async {
-    // Schema migration hook for future versions
+    if (oldVersion < 2) {
+      // Add expires_at column & indexes if upgrading from v1
+      try {
+        await db.execute('ALTER TABLE messages ADD COLUMN expires_at INTEGER DEFAULT 0;');
+        await db.execute('UPDATE messages SET expires_at = timestamp + ttl WHERE expires_at = 0;');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_expires_at ON messages(expires_at);');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_messages_priority_expires ON messages(priority DESC, expires_at ASC);');
+      } catch (_) {}
+    }
+  }
+
+  /// Purges all expired packets from the database to keep disk usage bounded.
+  Future<int> purgeExpiredPackets() async {
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return await db.delete(
+      'messages',
+      where: 'expires_at <= ?',
+      whereArgs: [now],
+    );
   }
 
   Future<void> close() async {
