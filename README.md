@@ -10,7 +10,15 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 [![License](https://img.shields.io/badge/License-MIT-red.svg?style=for-the-badge)](LICENSE)
 
-<br/>
+<br/><br/>
+
+### 📲 **Direct Release APK Downloads**
+
+[<img src="https://img.shields.io/badge/📲_DOWNLOAD_APK-ARM64--v8a_(56.7_MB)-2e7d32?style=for-the-badge&logo=android&logoColor=white" height="42"/>](https://github.com/Sh1sh1R017/RescueMesh/raw/main/releases/RescueMesh-arm64-v8a-release.apk)
+[<img src="https://img.shields.io/badge/📲_DOWNLOAD_APK-ARMv7_32--bit_(36.9_MB)-1b5e20?style=for-the-badge&logo=android&logoColor=white" height="42"/>](https://github.com/Sh1sh1R017/RescueMesh/raw/main/releases/RescueMesh-armeabi-v7a-release.apk)
+[<img src="https://img.shields.io/badge/💻_DOWNLOAD_APK-x86__64_Emulator_(53.8_MB)-1565c0?style=for-the-badge&logo=android&logoColor=white" height="42"/>](https://github.com/Sh1sh1R017/RescueMesh/raw/main/releases/RescueMesh-x86_64-release.apk)
+
+<br/><br/>
 
 **RescueMesh** is an open-source, emergency disaster response platform designed to operate in zero-connectivity environments where cellular towers, internet infrastructure, and power grids have failed.
 
@@ -113,10 +121,10 @@ RescueMesh includes an integrated **FEMA Incident Command System (ICS-213) Gener
 ### Direct Release APK Installation
 Pre-compiled production binaries are available in the [`releases/`](RELEASES.md) directory:
 
-1. Download [`releases/RescueMesh-v1.0.0-release.apk`](RELEASES.md).
+1. Download [`releases/RescueMesh-arm64-v8a-release.apk`](releases/RescueMesh-arm64-v8a-release.apk).
 2. Transfer to your Android device via USB or ADB:
    ```bash
-   adb install releases/RescueMesh-v1.0.0-release.apk
+   adb install releases/RescueMesh-arm64-v8a-release.apk
    ```
 
 ### Building from Source
