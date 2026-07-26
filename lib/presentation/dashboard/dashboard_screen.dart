@@ -178,7 +178,11 @@ class DashboardScreen extends ConsumerWidget {
                 final desc = descriptionController.text.trim();
                 if (desc.isEmpty) return;
 
-                final loc = await LocationService().getEmergencyLocationString();
+                String loc = '';
+                try {
+                  loc = await LocationService().getEmergencyLocationString();
+                } catch (_) {}
+
                 final nodeId = ref.read(deviceIdentityProvider);
                 final syncEngine = ref.read(syncEngineProvider);
 
@@ -190,7 +194,7 @@ class DashboardScreen extends ConsumerWidget {
                   timestamp: DateTime.now().millisecondsSinceEpoch,
                   ttl: kDefaultTtlMs,
                   hopCount: 0,
-                  payload: '[$selectedCategory] $desc $loc',
+                  payload: loc.isNotEmpty ? '[$selectedCategory] $desc $loc' : '[$selectedCategory] $desc',
                 );
 
                 await syncEngine.queueOutgoingPacket(packet);
@@ -264,7 +268,11 @@ class DashboardScreen extends ConsumerWidget {
                 final details = resourceController.text.trim();
                 if (details.isEmpty) return;
 
-                final loc = await LocationService().getEmergencyLocationString();
+                String loc = '';
+                try {
+                  loc = await LocationService().getEmergencyLocationString();
+                } catch (_) {}
+
                 final nodeId = ref.read(deviceIdentityProvider);
                 final syncEngine = ref.read(syncEngineProvider);
 
@@ -276,7 +284,7 @@ class DashboardScreen extends ConsumerWidget {
                   timestamp: DateTime.now().millisecondsSinceEpoch,
                   ttl: kDefaultTtlMs,
                   hopCount: 0,
-                  payload: '[$selectedType] $details $loc',
+                  payload: loc.isNotEmpty ? '[$selectedType] $details $loc' : '[$selectedType] $details',
                 );
 
                 await syncEngine.queueOutgoingPacket(packet);

@@ -163,7 +163,13 @@ class ResourcesScreen extends ConsumerWidget {
                 final details = resourceController.text.trim();
                 if (details.isEmpty) return;
 
-                final loc = await LocationService().getEmergencyLocationString();
+                String loc = '';
+                try {
+                  loc = await LocationService().getEmergencyLocationString();
+                } catch (e) {
+                  debugPrint('Location fetch fallback: $e');
+                }
+
                 final nodeId = ref.read(deviceIdentityProvider);
                 final syncEngine = ref.read(syncEngineProvider);
 
@@ -175,7 +181,7 @@ class ResourcesScreen extends ConsumerWidget {
                   timestamp: DateTime.now().millisecondsSinceEpoch,
                   ttl: kDefaultTtlMs,
                   hopCount: 0,
-                  payload: '[$selectedType] $details $loc',
+                  payload: loc.isNotEmpty ? '[$selectedType] $details $loc' : '[$selectedType] $details',
                 );
 
                 await syncEngine.queueOutgoingPacket(packet);
