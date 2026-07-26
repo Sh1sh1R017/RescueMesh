@@ -11,7 +11,6 @@ import '../../providers/device_identity_provider.dart';
 import '../../domain/models/mesh_packet.dart';
 import '../../domain/services/location_service.dart';
 
-
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
@@ -61,11 +60,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     } catch (_) {}
   }
 
-
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(recentMessagesProvider);
-
 
     return Scaffold(
       body: Stack(
@@ -99,7 +96,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       ),
                     ),
                   ];
-
 
                   for (final packet in messages) {
                     if (_selectedFilterType != 0 && packet.type != _selectedFilterType) {
@@ -202,13 +198,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Long-press anywhere on the map to pin a hazard or resource.')),
-          );
-        },
-        child: const Icon(Icons.add_location_alt),
+      floatingActionButton: Semantics(
+        button: true,
+        label: 'Add Location Report',
+        hint: 'Long-press map or tap to pin location report',
+        child: FloatingActionButton(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Long-press anywhere on the map to pin a hazard or resource.')),
+            );
+          },
+          child: const Icon(Icons.add_location_alt),
+        ),
       ),
     );
   }
@@ -296,12 +297,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 await syncEngine.queueOutgoingPacket(packet);
                 ref.invalidate(messagesRefreshProvider);
 
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Pinned location report queued for mesh broadcast.')),
-                  );
-                }
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Pinned location report queued for mesh broadcast.')),
+                );
               },
               child: const Text('PIN & BROADCAST'),
             ),

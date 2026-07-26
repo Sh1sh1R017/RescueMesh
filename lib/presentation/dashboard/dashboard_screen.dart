@@ -32,7 +32,16 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             _buildFemaReportButton(context, ref),
             const SizedBox(height: 24),
-            _buildRecentAlertsHeader(),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12.0),
+              child: Text(
+                'Nearby Alerts',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
             alertsAsyncValue.when(
               data: (alerts) {
                 if (alerts.isEmpty) {
@@ -47,19 +56,9 @@ class DashboardScreen extends ConsumerWidget {
                   itemCount: alerts.length,
                   itemBuilder: (context, index) {
                     final packet = alerts[index];
-                    final color = packet.priority == PacketPriority.critical
-                        ? AppTheme.criticalColor
-                        : Theme.of(context).colorScheme.onSurface;
-                    final icon = packet.type == PacketType.sos
-                        ? Icons.medical_services
-                        : Icons.warning_amber_rounded;
-                    final typeStr = packet.type == PacketType.sos ? 'SOS' : 'Alert';
-                    return _buildAlertItem(
-                      typeStr,
-                      packet.payload,
-                      icon,
-                      color,
-                      packet.timestamp,
+                    return AlertCard(
+                      key: ValueKey(packet.msgId),
+                      packet: packet,
                     );
                   },
                 );
@@ -77,23 +76,33 @@ class DashboardScreen extends ConsumerWidget {
     return Row(
       children: [
         Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () => _showReportHazardDialog(context, ref),
-            icon: const Icon(Icons.warning_amber_rounded),
-            label: const Text('Report Hazard'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Semantics(
+            button: true,
+            label: 'Report Hazard',
+            hint: 'Opens modal to report nearby hazard over BLE mesh',
+            child: ElevatedButton.icon(
+              onPressed: () => _showReportHazardDialog(context, ref),
+              icon: const Icon(Icons.warning_amber_rounded),
+              label: const Text('Report Hazard'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+              ),
             ),
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () => _showShareResourceDialog(context, ref),
-            icon: const Icon(Icons.handshake),
-            label: const Text('Share Resource'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Semantics(
+            button: true,
+            label: 'Share Resource',
+            hint: 'Opens modal to share supplies or water over BLE mesh',
+            child: ElevatedButton.icon(
+              onPressed: () => _showShareResourceDialog(context, ref),
+              icon: const Icon(Icons.handshake),
+              label: const Text('Share Resource'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+              ),
             ),
           ),
         ),
@@ -172,12 +181,12 @@ class DashboardScreen extends ConsumerWidget {
                 await syncEngine.queueOutgoingPacket(packet);
                 ref.invalidate(messagesRefreshProvider);
 
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Hazard report queued for mesh broadcast.')),
-                  );
-                }
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Hazard report queued for mesh broadcast.')),
+                );
               },
               child: const Text('SUBMIT HAZARD'),
             ),
@@ -258,12 +267,12 @@ class DashboardScreen extends ConsumerWidget {
                 await syncEngine.queueOutgoingPacket(packet);
                 ref.invalidate(messagesRefreshProvider);
 
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Resource share queued for mesh broadcast.')),
-                  );
-                }
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Resource share queued for mesh broadcast.')),
+                );
               },
               child: const Text('SHARE RESOURCE'),
             ),
@@ -274,12 +283,16 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildFemaReportButton(BuildContext context, WidgetRef ref) {
-    return ElevatedButton.icon(
-      onPressed: () async {
-        final messages = await ref.read(messageRepositoryProvider).getRecentAlerts(limit: 100);
-        final htmlSource = FemaReportGenerator().generateIcs213Html(messages);
+    return Semantics(
+      button: true,
+      label: 'Generate ICS-213 Report',
+      hint: 'Generates FEMA Incident Command System standard report',
+      child: ElevatedButton.icon(
+        onPressed: () async {
+          final messages = await ref.read(messageRepositoryProvider).getRecentAlerts(limit: 100);
+          final htmlSource = FemaReportGenerator().generateIcs213Html(messages);
 
-        if (context.mounted) {
+          if (!context.mounted) return;
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (previewContext) => Scaffold(
@@ -291,6 +304,7 @@ class DashboardScreen extends ConsumerWidget {
                       tooltip: 'Copy to Clipboard',
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: htmlSource));
+                        if (!previewContext.mounted) return;
                         ScaffoldMessenger.of(previewContext).showSnackBar(
                           const SnackBar(content: Text('FEMA ICS-213 Report copied to clipboard.')),
                         );
@@ -305,43 +319,47 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           );
-
-        }
-      },
-      icon: const Icon(Icons.assignment),
-      label: const Text('Generate ICS-213 Report'),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-      ),
-    );
-  }
-
-  Widget _buildRecentAlertsHeader() {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 12.0),
-      child: Text(
-        'Nearby Alerts',
-        style: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
+        },
+        icon: const Icon(Icons.assignment),
+        label: const Text('Generate ICS-213 Report'),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
     );
   }
+}
 
-  Widget _buildAlertItem(String title, String subtitle, IconData icon, Color color, int timestamp) {
-    final timeStr = relativeTime(timestamp);
+/// Independent StatelessWidget for Alert items to ensure tight rebuild scoping.
+class AlertCard extends StatelessWidget {
+  final MeshPacket packet;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.1),
-          child: Icon(icon, color: color),
+  const AlertCard({super.key, required this.packet});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = packet.priority == PacketPriority.critical
+        ? AppTheme.criticalColor
+        : Theme.of(context).colorScheme.onSurface;
+    final icon = packet.type == PacketType.sos
+        ? Icons.medical_services
+        : Icons.warning_amber_rounded;
+    final typeStr = packet.type == PacketType.sos ? 'SOS' : 'Alert';
+    final timeStr = relativeTime(packet.timestamp);
+
+    return Semantics(
+      label: '$typeStr alert: ${packet.payload}, $timeStr ago',
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: color.withValues(alpha: 0.1),
+            child: Icon(icon, color: color),
+          ),
+          title: Text(typeStr, style: const TextStyle(fontWeight: FontWeight.bold)),
+          subtitle: Text(packet.payload, maxLines: 2, overflow: TextOverflow.ellipsis),
+          trailing: Text(timeStr, style: const TextStyle(fontSize: 12)),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
-        trailing: Text(timeStr, style: const TextStyle(fontSize: 12)),
       ),
     );
   }

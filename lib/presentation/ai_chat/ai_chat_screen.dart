@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/services/first_aid_llm_service.dart';
-import '../../domain/services/llm_inference_service.dart';
-import '../../domain/services/hardware_profiler_service.dart';
-import '../../providers/llm_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../domain/services/first_aid_llm_service.dart';
+import '../../domain/services/hardware_profiler_service.dart';
+import '../../domain/services/llm_inference_service.dart';
+import '../../providers/llm_provider.dart';
 import 'llm_settings_screen.dart';
 
 // ─────────────────────────────────────────────
-// Data
+// Models
 // ─────────────────────────────────────────────
 
 enum MessageSource { user, knowledgeBase, llm }
@@ -57,7 +57,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   bool _useLlm = false; // Toggle: Knowledge Base vs. LLM
 
   List<String> get _suggestions => _kbService.topicTitles;
-
 
   @override
   void initState() {
@@ -108,44 +107,28 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   void _runKnowledgeBase(String query) {
-    // Instant ~0ms response — no async needed
-    Future.delayed(const Duration(milliseconds: 150), () {
-      if (!mounted) return;
-      final reply = _kbService.query(query);
-      setState(() {
-        _messages.add(ChatMessage(
-          text: reply,
-          source: MessageSource.knowledgeBase,
-          timestamp: DateTime.now(),
-        ));
-      });
-      _scrollToBottom();
+    final answer = _kbService.query(query);
+    setState(() {
+      _messages.add(ChatMessage(
+        text: answer,
+        source: MessageSource.knowledgeBase,
+        timestamp: DateTime.now(),
+      ));
     });
+    _scrollToBottom();
   }
 
   Future<void> _runLlmInference(String query) async {
     final inference = ref.read(llmInferenceServiceProvider);
 
-    if (!inference.isLoaded) {
-      // Try to load the best available model on demand
-      await ref.read(modelLoaderProvider.notifier).loadModel(
-            ref.read(activeTierProvider),
-          );
-
-      if (!inference.isLoaded) {
-        // Still not loaded — fall back to KB silently and warn user
-        _runKnowledgeBase(query);
-        if (mounted) {
-          _addSystemMessage(
-            '⚠️ No model loaded. Showing Knowledge Base result.\n'
-            'Go to **Settings ⚙** to download a model.',
-          );
-        }
-        return;
-      }
+    if (!inference.isModelReady) {
+      _addSystemMessage(
+        '⚠️ **No LLM model loaded.** Go to **Settings** (⚙️ top-right) '
+        'to download or select a model, or switch to **Knowledge Base Mode**.',
+      );
+      return;
     }
 
-    // Add a streaming placeholder bubble
     final placeholderIndex = _messages.length;
     setState(() {
       _messages.add(ChatMessage(
@@ -179,7 +162,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         }
       },
     );
-
   }
 
   void _addSystemMessage(String text) {
@@ -216,119 +198,74 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     final activeTier = ref.watch(activeTierProvider);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: const Text('Safety AI Triage'),
+        actions: [
+          _buildHardwareBadge(activeTier, inferState),
+        ],
+      ),
       body: Column(
         children: [
-          // ── Status bar ──────────────────────────────
-          _buildStatusBar(theme, activeTier, inferState),
-
-          // ── Mode toggle + settings ───────────────────
-          _buildModeToggleBar(theme),
-
-          // ── Quick-action chips ───────────────────────
-          SizedBox(
-            height: 48,
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              scrollDirection: Axis.horizontal,
-              itemCount: _suggestions.length,
-              itemBuilder: (ctx, i) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ActionChip(
-                  label: Text(
-                    _suggestions[i],
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                  backgroundColor: theme.colorScheme.surface,
-                  side: BorderSide(color: theme.colorScheme.secondary),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4)),
-                  onPressed: () => _handleSubmitted(_suggestions[i]),
-                ),
-              ),
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // ── Message list ────────────────────────────
+          _buildModeToggleHeader(theme),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
               itemCount: _messages.length,
-              itemBuilder: (ctx, i) => _buildMessageBubble(_messages[i]),
+              itemBuilder: (context, index) {
+                final message = _messages[index];
+                return ChatMessageBubble(
+                  key: ValueKey(message.timestamp.millisecondsSinceEpoch),
+                  message: message,
+                );
+              },
             ),
           ),
-
-          const Divider(height: 1),
-
-          // ── Input row ───────────────────────────────
+          _buildSuggestionsRow(theme),
           _buildInputRow(theme, inferState),
         ],
       ),
     );
   }
 
-  Widget _buildStatusBar(
-    ThemeData theme,
-    ModelTier activeTier,
+  Widget _buildHardwareBadge(
+    ModelTier tier,
     AsyncValue<InferenceState> inferState,
   ) {
-    final tierLabel = HardwareProfilerService.tierLabel(activeTier);
+    final status = inferState.maybeWhen(
+      data: (s) => s.status,
+      orElse: () => InferenceStatus.unloaded,
+    );
+    final String label = tier.name.toUpperCase();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      color: theme.colorScheme.surface,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.wifi_off, size: 13, color: Colors.grey),
-              SizedBox(width: 6),
-              Text(
-                '100% OFFLINE',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.8,
-                  fontSize: 11,
-                  color: Colors.grey,
-                ),
-              ),
-            ],
-          ),
-          // Model tier badge
-          inferState.when(
-            loading: () => const SizedBox(),
-            error: (_, __) => const SizedBox(),
-            data: (s) => _ModelTierBadge(
-              tier: activeTier,
-              tierLabel: tierLabel,
-              status: s.status,
-            ),
-          ),
-        ],
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: _ModelTierBadge(
+        tier: tier,
+        tierLabel: label,
+        status: status,
       ),
     );
   }
 
-  Widget _buildModeToggleBar(ThemeData theme) {
-    final color = _useLlm ? const Color(0xFF00E5FF) : Colors.orange;
+  Widget _buildModeToggleHeader(ThemeData theme) {
+    final color = _useLlm ? const Color(0xFF00E5FF) : Colors.amber;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: theme.colorScheme.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          // Toggle
           GestureDetector(
-            onTap: () => setState(() => _useLlm = !_useLlm),
+            onTap: () {
+              setState(() {
+                _useLlm = !_useLlm;
+              });
+            },
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: _useLlm ? 0.15 : 0.12),
                 border: Border.all(color: color, width: 1),
@@ -358,7 +295,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             ),
           ),
           const Spacer(),
-          // Settings button
           IconButton(
             icon: const Icon(Icons.settings_outlined, size: 20),
             tooltip: 'LLM Settings',
@@ -370,6 +306,27 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionsRow(ThemeData theme) {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _suggestions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final title = _suggestions[index];
+          return ActionChip(
+            label: Text(title, style: const TextStyle(fontSize: 12)),
+            backgroundColor: theme.colorScheme.surface,
+            side: BorderSide(color: theme.colorScheme.secondary),
+            onPressed: () => _handleSubmitted(title),
+          );
+        },
       ),
     );
   }
@@ -410,35 +367,36 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                     borderSide: BorderSide(color: theme.colorScheme.secondary),
                   ),
                 ),
-                style: theme.textTheme.bodyLarge,
               ),
             ),
             const SizedBox(width: 8),
-            isInferring
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
+            IconButton(
+              icon: isInferring
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.send),
-                    color: theme.colorScheme.primary,
-                    onPressed: () => _handleSubmitted(_controller.text),
-                  ),
+                    )
+                  : const Icon(Icons.send),
+              onPressed: isInferring
+                  ? null
+                  : () => _handleSubmitted(_controller.text),
+            ),
           ],
         ),
       ),
     );
   }
+}
 
-  // ─────────────────────────────────────────────
-  // Message bubble
-  // ─────────────────────────────────────────────
+/// Independent StatelessWidget for Chat Bubbles ensuring isolated rebuilds.
+class ChatMessageBubble extends StatelessWidget {
+  final ChatMessage message;
 
-  Widget _buildMessageBubble(ChatMessage message) {
+  const ChatMessageBubble({super.key, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isUser = message.source == MessageSource.user;
     final isLlm = message.source == MessageSource.llm;
@@ -455,58 +413,58 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             ? const Color(0xFF00E5FF).withValues(alpha: 0.4)
             : theme.colorScheme.secondary;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isUser) ...[
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              child: CircleAvatar(
-                backgroundColor: isLlm
-                    ? const Color(0xFF00E5FF).withValues(alpha: 0.2)
-                    : AppTheme.criticalColor,
-                radius: 16,
-                child: Icon(
-                  isLlm ? Icons.memory : Icons.psychology,
-                  size: 18,
-                  color: isLlm ? const Color(0xFF00E5FF) : Colors.white,
+    return Semantics(
+      label: '${isUser ? "User" : "AI"} message: ${message.text}',
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: Row(
+          mainAxisAlignment:
+              isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!isUser) ...[
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                child: CircleAvatar(
+                  backgroundColor: isLlm
+                      ? const Color(0xFF00E5FF).withValues(alpha: 0.2)
+                      : AppTheme.criticalColor,
+                  radius: 16,
+                  child: Icon(
+                    isLlm ? Icons.memory : Icons.psychology,
+                    size: 18,
+                    color: isLlm ? const Color(0xFF00E5FF) : Colors.white,
+                  ),
                 ),
+              ),
+            ],
+            Flexible(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: bubbleColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(8),
+                    topRight: const Radius.circular(8),
+                    bottomLeft: Radius.circular(isUser ? 8 : 2),
+                    bottomRight: Radius.circular(isUser ? 2 : 8),
+                  ),
+                  border: Border.all(color: borderColor, width: 1),
+                ),
+                child: message.isStreaming && message.text.isEmpty
+                    ? _buildThinkingIndicator()
+                    : isUser
+                        ? Text(message.text, style: theme.textTheme.bodyLarge)
+                        : MarkdownBody(
+                            data: message.text,
+                            styleSheet: _markdownStyleSheet(theme),
+                            softLineBreak: true,
+                          ),
               ),
             ),
           ],
-          Flexible(
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: bubbleColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(8),
-                  topRight: const Radius.circular(8),
-                  bottomLeft: Radius.circular(isUser ? 8 : 2),
-                  bottomRight: Radius.circular(isUser ? 2 : 8),
-                ),
-                border: Border.all(color: borderColor, width: 1),
-              ),
-              // ── Replaced 134-line hand-rolled markdown parser ──
-              // flutter_markdown handles bold, headers, bullets,
-              // numbered lists, and inline code correctly.
-              child: message.isStreaming && message.text.isEmpty
-                  ? _buildThinkingIndicator()
-                  : isUser
-                      ? Text(message.text, style: theme.textTheme.bodyLarge)
-                      : MarkdownBody(
-                          data: message.text,
-                          styleSheet: _markdownStyleSheet(theme),
-                          softLineBreak: true,
-                        ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -518,10 +476,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
         const SizedBox(
           width: 16,
           height: 16,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Color(0xFF00E5FF),
-          ),
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
         const SizedBox(width: 10),
         Text(
@@ -532,7 +487,6 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
-  /// Styles for flutter_markdown to match the app's dark theme.
   MarkdownStyleSheet _markdownStyleSheet(ThemeData theme) {
     return MarkdownStyleSheet.fromTheme(theme).copyWith(
       h3: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -568,47 +522,36 @@ class _ModelTierBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _colorForTier(tier);
-    final isActive = status != InferenceStatus.unloaded;
-
-    if (!isActive) {
-      return const Text(
-        'KB MODE',
-        style: TextStyle(
-          color: Colors.orange,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.8,
-        ),
-      );
-    }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color, width: 1),
+        color: color.withValues(alpha: 0.15),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (status == InferenceStatus.inferring)
-            Padding(
-              padding: const EdgeInsets.only(right: 5),
-              child: SizedBox(
-                width: 8,
-                height: 8,
-                child: CircularProgressIndicator(
-                    strokeWidth: 1.5, color: color),
-              ),
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: status == InferenceStatus.inferring
+                  ? Colors.greenAccent
+                  : status == InferenceStatus.ready
+                      ? Colors.blue
+                      : Colors.grey,
             ),
+          ),
+          const SizedBox(width: 6),
           Text(
-            'QWEN2.5 · $tierLabel',
+            tierLabel,
             style: TextStyle(
               color: color,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
-              letterSpacing: 0.8,
             ),
           ),
         ],
@@ -616,14 +559,14 @@ class _ModelTierBadge extends StatelessWidget {
     );
   }
 
-  static Color _colorForTier(ModelTier tier) {
+  Color _colorForTier(ModelTier tier) {
     switch (tier) {
       case ModelTier.base:
-        return Colors.orange;
+        return Colors.green;
       case ModelTier.enhancement1:
-        return const Color(0xFF00E5FF);
+        return Colors.blue;
       case ModelTier.enhancement2:
-        return const Color(0xFF69FF47);
+        return Colors.purple;
     }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../providers/message_provider.dart';
 import '../../providers/device_identity_provider.dart';
 import '../../domain/models/mesh_packet.dart';
@@ -36,10 +37,15 @@ class ResourcesScreen extends ConsumerWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showShareResourceDialog(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('Share Resource'),
+      floatingActionButton: Semantics(
+        button: true,
+        label: 'Share Resource',
+        hint: 'Opens modal to share supplies or water over BLE mesh',
+        child: FloatingActionButton.extended(
+          onPressed: () => _showShareResourceDialog(context, ref),
+          icon: const Icon(Icons.add),
+          label: const Text('Share Resource'),
+        ),
       ),
     );
   }
@@ -92,62 +98,15 @@ class ResourcesScreen extends ConsumerWidget {
           itemCount: resourcePackets.length,
           itemBuilder: (context, index) {
             final packet = resourcePackets[index];
-            return _buildRealResourceCard(context, packet);
+            return ResourceCard(
+              key: ValueKey(packet.msgId),
+              packet: packet,
+            );
           },
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, _) => Center(child: Text('Error loading resources: $err')),
-    );
-  }
-
-  Widget _buildRealResourceCard(BuildContext context, MeshPacket packet) {
-    final timeStr = relativeTime(packet.timestamp);
-    IconData icon = Icons.medical_services;
-    Color iconColor = Colors.green;
-
-    if (packet.payload.contains('WATER')) {
-      icon = Icons.water_drop;
-      iconColor = Colors.blue;
-    } else if (packet.payload.contains('POWER')) {
-      icon = Icons.electrical_services;
-      iconColor = Colors.amber;
-    } else if (packet.payload.contains('FOOD')) {
-      icon = Icons.restaurant;
-      iconColor = Colors.orange;
-    } else if (packet.payload.contains('SHELTER')) {
-      icon = Icons.cabin;
-      iconColor = Colors.purple;
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: iconColor),
-        ),
-        title: Text(packet.payload.split('] ').last, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: Row(
-            children: [
-              const Icon(Icons.access_time, size: 14, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text(timeStr, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              const SizedBox(width: 16),
-              const Icon(Icons.wifi_tethering, size: 14, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text('Hops: ${packet.hopCount}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -222,16 +181,79 @@ class ResourcesScreen extends ConsumerWidget {
                 await syncEngine.queueOutgoingPacket(packet);
                 ref.invalidate(messagesRefreshProvider);
 
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Resource share queued for mesh broadcast.')),
-                  );
-                }
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Resource share queued for mesh broadcast.')),
+                );
               },
               child: const Text('SHARE RESOURCE'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Independent StatelessWidget for Resource Cards to ensure tight rebuild scoping.
+class ResourceCard extends StatelessWidget {
+  final MeshPacket packet;
+
+  const ResourceCard({super.key, required this.packet});
+
+  @override
+  Widget build(BuildContext context) {
+    final timeStr = relativeTime(packet.timestamp);
+    IconData icon = Icons.medical_services;
+    Color iconColor = Colors.green;
+
+    if (packet.payload.contains('WATER')) {
+      icon = Icons.water_drop;
+      iconColor = Colors.blue;
+    } else if (packet.payload.contains('POWER')) {
+      icon = Icons.electrical_services;
+      iconColor = Colors.amber;
+    } else if (packet.payload.contains('FOOD')) {
+      icon = Icons.restaurant;
+      iconColor = Colors.orange;
+    } else if (packet.payload.contains('SHELTER')) {
+      icon = Icons.cabin;
+      iconColor = Colors.purple;
+    }
+
+    final title = packet.payload.split('] ').last;
+
+    return Semantics(
+      label: 'Resource $title, shared $timeStr ago, ${packet.hopCount} hops',
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          leading: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor),
+          ),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Row(
+              children: [
+                const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(timeStr, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                const SizedBox(width: 16),
+                const Icon(Icons.wifi_tethering, size: 14, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text('Hops: ${packet.hopCount}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
+            ),
+          ),
         ),
       ),
     );

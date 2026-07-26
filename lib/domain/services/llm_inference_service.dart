@@ -68,8 +68,10 @@ class LlmInferenceService {
 
   Stream<InferenceState> get stateStream => _stateController.stream;
   InferenceState get currentState => _state;
+  bool get isModelReady => _contextId != null;
 
   void _emit(InferenceState s) {
+
     _state = s;
     _stateController.add(s);
   }

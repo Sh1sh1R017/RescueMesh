@@ -13,39 +13,6 @@ import '../../domain/services/voice_recognition_service.dart';
 class FeedScreen extends ConsumerWidget {
   const FeedScreen({super.key});
 
-  IconData _getIconForType(int type) {
-    switch (type) {
-      case PacketType.sos:
-        return Icons.medical_services;
-      case PacketType.report:
-        return Icons.warning_amber_rounded;
-      case PacketType.resource:
-        return Icons.water_drop;
-      default:
-        return Icons.message;
-    }
-  }
-
-  Color _getColorForType(int type, BuildContext context) {
-    if (type == PacketType.sos) return AppTheme.criticalColor;
-    return Theme.of(context).colorScheme.onSurface;
-  }
-
-  String _getTypeString(int type) {
-    switch (type) {
-      case PacketType.sos:
-        return 'SOS';
-      case PacketType.report:
-        return 'Report';
-      case PacketType.missing:
-        return 'Missing';
-      case PacketType.resource:
-        return 'Resource';
-      default:
-        return 'Chat';
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final messagesAsyncValue = ref.watch(recentMessagesProvider);
@@ -75,52 +42,9 @@ class FeedScreen extends ConsumerWidget {
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final packet = messages[index];
-                final color = _getColorForType(packet.type, context);
-                final typeStr = _getTypeString(packet.type);
-                final timeStr = relativeTime(packet.timestamp);
-
-                return ListTile(
-                  leading: Icon(_getIconForType(packet.type), color: color, size: 28),
-                  title: Padding(
-                    padding: const EdgeInsets.only(bottom: 4.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          typeStr.toUpperCase(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: color,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          timeStr,
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                        const Spacer(),
-                        Row(
-                          children: [
-                            Icon(Icons.wifi_tethering, size: 12, color: Theme.of(context).textTheme.bodyMedium?.color),
-                            const SizedBox(width: 2),
-                            Text(
-                              'Node: ${packet.originNodeId.isEmpty ? "Local" : packet.originNodeId.substring(0, min(packet.originNodeId.length, 6))}',
-                              style: Theme.of(context).textTheme.labelMedium,
-                            ),
-                          ],
-                        ),
-
-                      ],
-                    ),
-                  ),
-                  subtitle: Text(
-                    packet.payload,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  isThreeLine: true,
+                return FeedTile(
+                  key: ValueKey(packet.msgId),
+                  packet: packet,
                 );
               },
             );
@@ -132,17 +56,27 @@ class FeedScreen extends ConsumerWidget {
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton(
-            heroTag: 'voice_btn',
-            onPressed: () => _showVoiceDictationDialog(context, ref),
-            child: const Icon(Icons.mic),
+          Semantics(
+            button: true,
+            label: 'Voice Dictation',
+            hint: 'Record hands-free emergency voice note',
+            child: FloatingActionButton(
+              heroTag: 'voice_btn',
+              onPressed: () => _showVoiceDictationDialog(context, ref),
+              child: const Icon(Icons.mic),
+            ),
           ),
           const SizedBox(width: 16),
-          FloatingActionButton.extended(
-            heroTag: 'post_btn',
-            onPressed: () => _showComposeDialog(context, ref),
-            icon: const Icon(Icons.edit),
-            label: const Text('POST'),
+          Semantics(
+            button: true,
+            label: 'Compose Post',
+            hint: 'Compose custom emergency post for BLE mesh broadcast',
+            child: FloatingActionButton.extended(
+              heroTag: 'post_btn',
+              onPressed: () => _showComposeDialog(context, ref),
+              icon: const Icon(Icons.edit),
+              label: const Text('POST'),
+            ),
           ),
         ],
       ),
@@ -231,9 +165,8 @@ class FeedScreen extends ConsumerWidget {
                   await syncEngine.queueOutgoingPacket(packet);
                   ref.invalidate(messagesRefreshProvider);
 
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext);
-                  }
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
                 },
                 child: const Text('POST VOICE NOTE'),
               ),
@@ -285,13 +218,108 @@ class FeedScreen extends ConsumerWidget {
               await syncEngine.queueOutgoingPacket(packet);
               ref.invalidate(messagesRefreshProvider);
 
-              if (dialogContext.mounted) {
-                Navigator.pop(dialogContext);
-              }
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext);
             },
             child: const Text('POST'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Independent StatelessWidget for Feed items to ensure tight rebuild scoping.
+class FeedTile extends StatelessWidget {
+  final MeshPacket packet;
+
+  const FeedTile({super.key, required this.packet});
+
+  IconData _getIconForType(int type) {
+    switch (type) {
+      case PacketType.sos:
+        return Icons.medical_services;
+      case PacketType.report:
+        return Icons.warning_amber_rounded;
+      case PacketType.resource:
+        return Icons.water_drop;
+      default:
+        return Icons.message;
+    }
+  }
+
+  Color _getColorForType(int type, BuildContext context) {
+    if (type == PacketType.sos) return AppTheme.criticalColor;
+    return Theme.of(context).colorScheme.onSurface;
+  }
+
+  String _getTypeString(int type) {
+    switch (type) {
+      case PacketType.sos:
+        return 'SOS';
+      case PacketType.report:
+        return 'Report';
+      case PacketType.missing:
+        return 'Missing';
+      case PacketType.resource:
+        return 'Resource';
+      default:
+        return 'Chat';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _getColorForType(packet.type, context);
+    final typeStr = _getTypeString(packet.type);
+    final timeStr = relativeTime(packet.timestamp);
+    final nodeShort = packet.originNodeId.isEmpty
+        ? "Local"
+        : packet.originNodeId.substring(0, min(packet.originNodeId.length, 6));
+
+    return Semantics(
+      label: '$typeStr post from Node $nodeShort: ${packet.payload}, $timeStr ago',
+      child: ListTile(
+        leading: Icon(_getIconForType(packet.type), color: color, size: 28),
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 4.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                typeStr.toUpperCase(),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: color,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                timeStr,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  Icon(Icons.wifi_tethering, size: 12, color: Theme.of(context).textTheme.bodyMedium?.color),
+                  const SizedBox(width: 2),
+                  Text(
+                    'Node: $nodeShort',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        subtitle: Text(
+          packet.payload,
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+        isThreeLine: true,
       ),
     );
   }
