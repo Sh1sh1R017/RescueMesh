@@ -2,44 +2,34 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter/foundation.dart';
 
 class LocationService {
-  /// Fetches the current location if permissions are granted.
-  /// Returns a formatted string: "📍 [Lat, Lng]" or an empty string if failed.
-  Future<String> getEmergencyLocationString() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  /// Fetches the raw Position if available and permitted.
+  Future<Position?> getCurrentPosition() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return null;
 
-    // Test if location services are enabled.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      debugPrint('Location services are disabled.');
-      return '';
-    }
-
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        debugPrint('Location permissions are denied');
-        return '';
-      }
+      if (permission == LocationPermission.denied) return null;
     }
-    
-    if (permission == LocationPermission.deniedForever) {
-      debugPrint('Location permissions are permanently denied.');
-      return '';
-    } 
+    if (permission == LocationPermission.deniedForever) return null;
 
     try {
-      Position position = await Geolocator.getCurrentPosition(
+      return await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 5), // Don't block emergency sends for too long
+        timeLimit: const Duration(seconds: 4),
       );
-      
-      // Return a compact string to save BLE bandwidth
-      return '[LAT: ${position.latitude.toStringAsFixed(4)}, LNG: ${position.longitude.toStringAsFixed(4)}]';
     } catch (e) {
-      debugPrint('Error getting location: $e');
-      return '';
+      if (kDebugMode) debugPrint('Error getting raw position: $e');
+      return null;
     }
+  }
+
+  /// Fetches the current location if permissions are granted.
+  /// Returns a formatted string: "[LAT: x, LNG: y]" or an empty string if failed.
+  Future<String> getEmergencyLocationString() async {
+    final pos = await getCurrentPosition();
+    if (pos == null) return '';
+    return '[LAT: ${pos.latitude.toStringAsFixed(4)}, LNG: ${pos.longitude.toStringAsFixed(4)}]';
   }
 }

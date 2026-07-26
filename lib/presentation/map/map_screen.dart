@@ -9,6 +9,8 @@ import '../../data/mesh/cached_tile_provider.dart';
 import '../../providers/message_provider.dart';
 import '../../providers/device_identity_provider.dart';
 import '../../domain/models/mesh_packet.dart';
+import '../../domain/services/location_service.dart';
+
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -32,6 +34,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   Future<void> _determineCenterLocation() async {
     try {
+      // 1. Attempt to center on actual live device GPS location
+      final pos = await LocationService().getCurrentPosition();
+      if (pos != null && mounted) {
+        setState(() {
+          _currentCenter = LatLng(pos.latitude, pos.longitude);
+        });
+        return;
+      }
+
+      // 2. Fallback: Center on the latest emergency report location in SQLite
       final messages = await ref.read(messageRepositoryProvider).getRecentMessages(limit: 10);
       for (final packet in messages) {
         final match = _locationRegExp.firstMatch(packet.payload);
@@ -48,6 +60,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     } catch (_) {}
   }
+
 
   @override
   Widget build(BuildContext context) {
