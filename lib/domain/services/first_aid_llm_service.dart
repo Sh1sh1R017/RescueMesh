@@ -4,7 +4,7 @@ import '../../data/knowledge_base/first_aid_topics.dart';
 export '../models/first_aid_topic.dart';
 
 /// Offline First Aid Knowledge Base service.
-/// Uses multi-keyword scoring with partial matching for fast, reliable offline NLP.
+/// Multi-field weighted scoring across keywords, title, summary, and contraindications.
 class FirstAidLlmService {
   final List<FirstAidTopic> _knowledgeBase;
 
@@ -14,25 +14,47 @@ class FirstAidLlmService {
   /// Processes a natural language query offline and returns the best first aid match.
   String query(String userMessage) {
     final cleaned = userMessage.toLowerCase().replaceAll(RegExp(r'[^\w\s]'), '');
-    final tokens = cleaned.split(RegExp(r'\s+'));
+    final tokens = cleaned.split(RegExp(r'\s+')).where((w) => w.length >= 3).toList();
+
+    if (tokens.isEmpty) {
+      return _buildFallbackMessage();
+    }
 
     FirstAidTopic? bestMatch;
     int highestScore = 0;
 
     for (final topic in _knowledgeBase) {
       int score = 0;
+      final topicTitleLower = topic.title.toLowerCase();
+      final topicSummaryLower = topic.summary.toLowerCase();
+      final topicContraLower = topic.contraindications.join(' ').toLowerCase();
+
       for (final word in tokens) {
-        if (word.length < 3) continue;
+        // 1. Keyword match (Highest priority)
         for (final keyword in topic.keywords) {
           if (keyword == word) {
-            score += 3; // Exact match
+            score += 5;
           } else if (keyword.contains(word) || word.contains(keyword)) {
-            score += 2; // Partial match
-          } else if (keyword.split(' ').contains(word)) {
-            score += 1; // Word in multi-word keyword
+            score += 3;
           }
         }
+
+        // 2. Contraindication match (Critical warnings like urine/pee)
+        if (topicContraLower.contains(word)) {
+          score += 4;
+        }
+
+        // 3. Title match
+        if (topicTitleLower.contains(word)) {
+          score += 3;
+        }
+
+        // 4. Summary match
+        if (topicSummaryLower.contains(word)) {
+          score += 1;
+        }
       }
+
       if (score > highestScore) {
         highestScore = score;
         bestMatch = topic;
@@ -61,6 +83,10 @@ class FirstAidLlmService {
       return buffer.toString();
     }
 
+    return _buildFallbackMessage();
+  }
+
+  String _buildFallbackMessage() {
     final suggestions = topicTitles.map((title) => '* $title').join('\n');
     return '### 🧠 OFFLINE ASSISTANT: Topic Not Recognised\n\n'
         'I couldn\'t confidently match your query. I have detailed protocols for:\n\n'
