@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/message_provider.dart';
+import '../../providers/device_identity_provider.dart';
+import '../../domain/models/mesh_packet.dart';
+import '../../domain/services/location_service.dart';
+import '../../core/constants/packet_constants.dart';
 
-class ResourcesScreen extends StatelessWidget {
+class ResourcesScreen extends ConsumerWidget {
   const ResourcesScreen({super.key});
 
   static const _availableResources = [
@@ -38,26 +44,119 @@ class ResourcesScreen extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        children: [
-          const TabBar(
-            tabs: [
-              Tab(text: 'Available'),
-              Tab(text: 'Needed'),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _buildAvailableList(),
-                _buildNeededList(context),
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      body: DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            const TabBar(
+              tabs: [
+                Tab(text: 'Available'),
+                Tab(text: 'Needed'),
               ],
             ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _buildAvailableList(),
+                  _buildNeededList(context),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showShareResourceDialog(context, ref),
+        icon: const Icon(Icons.add),
+        label: const Text('Share Resource'),
+      ),
+    );
+  }
+
+  void _showShareResourceDialog(BuildContext context, WidgetRef ref) {
+    final resourceController = TextEditingController();
+    String selectedType = 'WATER';
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Share Resource'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Resource Type:'),
+              const SizedBox(height: 8),
+              DropdownButton<String>(
+                value: selectedType,
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: 'WATER', child: Text('💧 Clean Water')),
+                  DropdownMenuItem(value: 'POWER', child: Text('⚡ Generator / Charging')),
+                  DropdownMenuItem(value: 'FIRST_AID', child: Text('🩹 Medical / First Aid')),
+                  DropdownMenuItem(value: 'FOOD', child: Text('🍲 Rations / Food')),
+                  DropdownMenuItem(value: 'SHELTER', child: Text('🎪 Temporary Shelter')),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    setDialogState(() => selectedType = val);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: resourceController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Resource Details & Location',
+                  hintText: 'e.g., 50L drinking water available at community hall...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCEL'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final details = resourceController.text.trim();
+                if (details.isEmpty) return;
+
+                final loc = await LocationService().getEmergencyLocationString();
+                final nodeId = ref.read(deviceIdentityProvider);
+                final syncEngine = ref.read(syncEngineProvider);
+
+                final packet = MeshPacket(
+                  msgId: 'resource_${DateTime.now().millisecondsSinceEpoch}',
+                  originNodeId: nodeId,
+                  type: PacketType.resource,
+                  priority: PacketPriority.normal,
+                  timestamp: DateTime.now().millisecondsSinceEpoch,
+                  ttl: kDefaultTtlMs,
+                  hopCount: 0,
+                  payload: '[$selectedType] $details $loc',
+                );
+
+                await syncEngine.queueOutgoingPacket(packet);
+                ref.invalidate(messagesRefreshProvider);
+
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Resource share queued for mesh broadcast.')),
+                  );
+                }
+              },
+              child: const Text('SHARE RESOURCE'),
+            ),
+          ],
+        ),
       ),
     );
   }

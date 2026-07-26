@@ -7,108 +7,266 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/packet_constants.dart';
 import '../../data/mesh/cached_tile_provider.dart';
 import '../../providers/message_provider.dart';
+import '../../providers/device_identity_provider.dart';
 import '../../domain/models/mesh_packet.dart';
 
-class MapScreen extends ConsumerWidget {
+class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
+  @override
+  ConsumerState<MapScreen> createState() => _MapScreenState();
+}
+
+class _MapScreenState extends ConsumerState<MapScreen> {
   static final RegExp _locationRegExp =
       RegExp(r'\[LAT: ([-\d.]+), LNG: ([-\d.]+)\]');
 
+  int _selectedFilterType = 0; // 0=All, 1=SOS, 2=Reports/Hazards, 4=Resources
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     const centerPosition = LatLng(37.7749, -122.4194);
     final messagesAsync = ref.watch(recentMessagesProvider);
 
     return Scaffold(
-      body: FlutterMap(
-        options: const MapOptions(
-          initialCenter: centerPosition,
-          initialZoom: 14.0,
-        ),
+      body: Stack(
         children: [
-          TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'com.rescuemesh.app',
-            tileProvider: CachedTileProvider(),
-          ),
-          messagesAsync.when(
-            data: (messages) {
-              final markers = <Marker>[
-                // Default user location marker
-                const Marker(
-                  point: centerPosition,
-                  width: 60,
-                  height: 60,
-                  child: Icon(
-                    Icons.my_location,
-                    color: Colors.blue,
-                    size: 36,
-                  ),
-                ),
-              ];
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: centerPosition,
+              initialZoom: 14.0,
+              onLongPress: (tapPosition, point) {
+                _showAddCustomMarkerDialog(context, point);
+              },
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.rescuemesh.app',
+                tileProvider: CachedTileProvider(),
+              ),
+              messagesAsync.when(
+                data: (messages) {
+                  final markers = <Marker>[
+                    // Default user location marker
+                    const Marker(
+                      point: centerPosition,
+                      width: 60,
+                      height: 60,
+                      child: Icon(
+                        Icons.my_location,
+                        color: Colors.blue,
+                        size: 36,
+                      ),
+                    ),
+                  ];
 
-              for (final packet in messages) {
-                final match = _locationRegExp.firstMatch(packet.payload);
-                if (match != null) {
-                  final lat = double.tryParse(match.group(1) ?? '');
-                  final lng = double.tryParse(match.group(2) ?? '');
-                  if (lat != null && lng != null) {
-                    final latLng = LatLng(lat, lng);
-
-                    // Choose icon and color based on message type/priority
-                    IconData iconData;
-                    Color markerColor;
-
-                    if (packet.type == PacketType.sos) {
-                      iconData = Icons.warning;
-                      markerColor = AppTheme.criticalColor;
-                    } else if (packet.type == PacketType.report) {
-                      iconData = Icons.report_problem;
-                      markerColor = Colors.orange;
-                    } else if (packet.type == PacketType.resource) {
-                      iconData = Icons.water_drop;
-                      markerColor = Colors.green;
-                    } else {
-                      iconData = Icons.info;
-                      markerColor = Colors.blueGrey;
+                  for (final packet in messages) {
+                    if (_selectedFilterType != 0 && packet.type != _selectedFilterType) {
+                      continue;
                     }
 
-                    markers.add(
-                      Marker(
-                        point: latLng,
-                        width: 50,
-                        height: 50,
-                        child: GestureDetector(
-                          onTap: () {
-                            _showMarkerDetails(context, packet);
-                          },
-                          child: Icon(
-                            iconData,
-                            color: markerColor,
-                            size: 36,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                }
-              }
+                    final match = _locationRegExp.firstMatch(packet.payload);
+                    if (match != null) {
+                      final lat = double.tryParse(match.group(1) ?? '');
+                      final lng = double.tryParse(match.group(2) ?? '');
+                      if (lat != null && lng != null) {
+                        final latLng = LatLng(lat, lng);
 
-              return MarkerLayer(markers: markers);
-            },
-            loading: () => const MarkerLayer(markers: []),
-            error: (_, __) => const MarkerLayer(markers: []),
+                        IconData iconData;
+                        Color markerColor;
+
+                        if (packet.type == PacketType.sos) {
+                          iconData = Icons.warning;
+                          markerColor = AppTheme.criticalColor;
+                        } else if (packet.type == PacketType.report) {
+                          iconData = Icons.report_problem;
+                          markerColor = Colors.orange;
+                        } else if (packet.type == PacketType.resource) {
+                          iconData = Icons.water_drop;
+                          markerColor = Colors.green;
+                        } else {
+                          iconData = Icons.info;
+                          markerColor = Colors.blueGrey;
+                        }
+
+                        markers.add(
+                          Marker(
+                            point: latLng,
+                            width: 50,
+                            height: 50,
+                            child: GestureDetector(
+                              onTap: () {
+                                _showMarkerDetails(context, packet);
+                              },
+                              child: Icon(
+                                iconData,
+                                color: markerColor,
+                                size: 36,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  }
+
+                  return MarkerLayer(markers: markers);
+                },
+                loading: () => const MarkerLayer(markers: []),
+                error: (_, __) => const MarkerLayer(markers: []),
+              ),
+            ],
+          ),
+
+          // Top Filter Bar
+          Positioned(
+            top: 16,
+            left: 16,
+            right: 16,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip('ALL', 0),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('🆘 SOS', PacketType.sos),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('⚠️ HAZARDS', PacketType.report),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('💧 RESOURCES', PacketType.resource),
+                ],
+              ),
+            ),
+          ),
+
+          // Offline Status Indicator
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Theme.of(context).colorScheme.secondary),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.offline_pin, size: 14, color: Colors.green),
+                  SizedBox(width: 6),
+                  Text('OFFLINE MAP CACHE ACTIVE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Long-press map or use POST/SOS to submit location reports.')),
+            const SnackBar(content: Text('Long-press anywhere on the map to pin a hazard or resource.')),
           );
         },
         child: const Icon(Icons.add_location_alt),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, int type) {
+    final bool isSelected = _selectedFilterType == type;
+    return ChoiceChip(
+      label: Text(label, style: TextStyle(color: isSelected ? Colors.white : null, fontSize: 12, fontWeight: FontWeight.bold)),
+      selected: isSelected,
+      selectedColor: Theme.of(context).colorScheme.primary,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _selectedFilterType = type;
+          });
+        }
+      },
+    );
+  }
+
+  void _showAddCustomMarkerDialog(BuildContext context, LatLng point) {
+    final textController = TextEditingController();
+    int selectedType = PacketType.report;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Pin Map Emergency Location'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Location: [LAT: ${point.latitude.toStringAsFixed(4)}, LNG: ${point.longitude.toStringAsFixed(4)}]'),
+              const SizedBox(height: 12),
+              DropdownButton<int>(
+                value: selectedType,
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: PacketType.report, child: Text('⚠️ Hazard Report')),
+                  DropdownMenuItem(value: PacketType.resource, child: Text('💧 Shared Resource')),
+                  DropdownMenuItem(value: PacketType.sos, child: Text('🆘 Emergency SOS')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setDialogState(() => selectedType = val);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: textController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Report Details',
+                  hintText: 'Describe situation at this pinned point...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCEL'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final details = textController.text.trim();
+                if (details.isEmpty) return;
+
+                final loc = '[LAT: ${point.latitude.toStringAsFixed(6)}, LNG: ${point.longitude.toStringAsFixed(6)}]';
+                final nodeId = ref.read(deviceIdentityProvider);
+                final syncEngine = ref.read(syncEngineProvider);
+
+                final packet = MeshPacket(
+                  msgId: 'pin_${DateTime.now().millisecondsSinceEpoch}',
+                  originNodeId: nodeId,
+                  type: selectedType,
+                  priority: selectedType == PacketType.sos ? PacketPriority.critical : PacketPriority.high,
+                  timestamp: DateTime.now().millisecondsSinceEpoch,
+                  ttl: kDefaultTtlMs,
+                  hopCount: 0,
+                  payload: '$details $loc',
+                );
+
+                await syncEngine.queueOutgoingPacket(packet);
+                ref.invalidate(messagesRefreshProvider);
+
+                if (dialogContext.mounted) {
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Pinned location report queued for mesh broadcast.')),
+                  );
+                }
+              },
+              child: const Text('PIN & BROADCAST'),
+            ),
+          ],
+        ),
       ),
     );
   }

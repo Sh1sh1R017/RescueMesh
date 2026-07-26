@@ -6,6 +6,7 @@ import '../../core/constants/packet_constants.dart';
 import '../../providers/message_provider.dart';
 import '../../providers/device_identity_provider.dart';
 import '../../domain/models/mesh_packet.dart';
+import '../../domain/services/voice_recognition_service.dart';
 
 class FeedScreen extends ConsumerWidget {
   const FeedScreen({super.key});
@@ -104,7 +105,7 @@ class FeedScreen extends ConsumerWidget {
                             Icon(Icons.location_on, size: 12, color: Theme.of(context).textTheme.bodyMedium?.color),
                             const SizedBox(width: 2),
                             Text(
-                              'Near', // Location placeholder for MVP
+                              'Near',
                               style: Theme.of(context).textTheme.labelMedium,
                             ),
                           ],
@@ -130,9 +131,7 @@ class FeedScreen extends ConsumerWidget {
         children: [
           FloatingActionButton(
             heroTag: 'voice_btn',
-            onPressed: () {
-              // TODO: Start Vosk Voice Recognition Service
-            },
+            onPressed: () => _showVoiceDictationDialog(context, ref),
             child: const Icon(Icons.mic),
           ),
           const SizedBox(width: 16),
@@ -143,6 +142,101 @@ class FeedScreen extends ConsumerWidget {
             label: const Text('POST'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showVoiceDictationDialog(BuildContext context, WidgetRef ref) {
+    final voiceService = VoiceRecognitionService();
+    final textController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.mic, color: AppTheme.criticalColor),
+                SizedBox(width: 8),
+                Text('Voice Command'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Speak your emergency report clearly into the microphone:'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: textController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: 'Transcribed speech will appear here...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      if (voiceService.isListening) {
+                        await voiceService.stopListening();
+                        setDialogState(() {});
+                      } else {
+                        final granted = await voiceService.initialize();
+                        if (granted) {
+                          await voiceService.startListening();
+                          setDialogState(() {});
+                        }
+                      }
+                    },
+                    icon: Icon(voiceService.isListening ? Icons.stop : Icons.record_voice_over),
+                    label: Text(voiceService.isListening ? 'STOP RECORDING' : 'START DICTATION'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: voiceService.isListening ? Colors.red : AppTheme.criticalColor,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('CANCEL'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final text = textController.text.trim();
+                  if (text.isEmpty) return;
+
+                  final syncEngine = ref.read(syncEngineProvider);
+                  final nodeId = ref.read(deviceIdentityProvider);
+
+                  final packet = MeshPacket(
+                    msgId: 'voice_${DateTime.now().millisecondsSinceEpoch}',
+                    originNodeId: nodeId,
+                    type: PacketType.chat,
+                    priority: PacketPriority.normal,
+                    timestamp: DateTime.now().millisecondsSinceEpoch,
+                    ttl: kDefaultTtlMs,
+                    hopCount: 0,
+                    payload: '[VOICE] $text',
+                  );
+
+                  await syncEngine.queueOutgoingPacket(packet);
+                  ref.invalidate(messagesRefreshProvider);
+
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+                },
+                child: const Text('POST VOICE NOTE'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
