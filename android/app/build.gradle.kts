@@ -23,9 +23,18 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = "rescuemesh"
+            keyPassword = "RescueMeshSecure2026!"
+            storeFile = file("rescuemesh_release.jks")
+            storePassword = "RescueMeshSecure2026!"
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
             proguardFiles(
