@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
 import '../core/constants/packet_constants.dart';
@@ -126,6 +128,10 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
       final nodeId = ref.read(deviceIdentityProvider);
       final syncEngine = ref.read(syncEngineProvider);
 
+      final String payloadStr = locString.isNotEmpty
+          ? locString
+          : '[CRITICAL EMERGENCY SOS] Location unavailable — Node: ${nodeId.isEmpty ? "Local" : nodeId.substring(0, min(nodeId.length, 6))}';
+
       final packet = MeshPacket(
         msgId: 'sos_${DateTime.now().millisecondsSinceEpoch}',
         originNodeId: nodeId,
@@ -134,7 +140,7 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
         timestamp: DateTime.now().millisecondsSinceEpoch,
         ttl: kDefaultTtlMs,
         hopCount: 0,
-        payload: locString,
+        payload: payloadStr,
       );
 
       final success = await syncEngine.queueOutgoingPacket(packet);
@@ -149,6 +155,7 @@ class _MainDashboardScreenState extends ConsumerState<MainDashboardScreen> {
       return false;
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

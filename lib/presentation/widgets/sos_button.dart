@@ -75,12 +75,13 @@ class SosButton extends StatelessWidget {
       SnackBar(
         content: Text(
           success
-              ? 'SOS queued — will send when a peer connects.'
-              : 'SOS failed to queue. Please check location permissions.',
+              ? '🆘 CRITICAL SOS QUEUED — Will broadcast over BLE mesh.'
+              : '⚠️ Failed to queue SOS packet to local database.',
         ),
-        backgroundColor: success ? theme.colorScheme.surface : theme.colorScheme.error,
+        backgroundColor: success ? AppTheme.criticalColor : theme.colorScheme.error,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
+
 }
