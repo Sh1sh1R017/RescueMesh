@@ -2,15 +2,15 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
-/// Model tiers available in the system.
+/// Model tiers available in the SmolLM2 system.
 enum ModelTier {
-  /// Qwen2.5-0.5B-Instruct-Q4_K_M.gguf (~490 MB) — always the failsafe.
+  /// SmolLM2-135M-Instruct-Q4_K_M.gguf (~95 MB) — ultra-compact base failsafe.
   base,
 
-  /// Qwen2.5-1.5B-Instruct-Q4_K_M.gguf (~1.1 GB) — offered on ≥ 6 GB RAM.
+  /// SmolLM2-360M-Instruct-Q4_K_M.gguf (~240 MB) — offered on ≥ 2.5 GB RAM.
   enhancement1,
 
-  /// Qwen2.5-3B-Instruct-Q4_K_M.gguf (~1.9 GB) — offered on ≥ 8 GB RAM.
+  /// SmolLM2-1.7B-Instruct-Q4_K_M.gguf (~1.0 GB) — offered on ≥ 4 GB RAM.
   enhancement2,
 }
 
@@ -30,25 +30,25 @@ const _kGb = 1024 * 1024 * 1024;
 
 const Map<ModelTier, _TierSpec> _kTierSpecs = {
   ModelTier.base: _TierSpec(
-    '0.5B',
-    'Qwen2.5-0.5B-Instruct-Q4_K_M.gguf',
-    490 * _kMb,
+    'SmolLM2-135M',
+    'SmolLM2-135M-Instruct-Q4_K_M.gguf',
+    95 * _kMb,
   ),
   ModelTier.enhancement1: _TierSpec(
-    '1.5B',
-    'Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
-    1100 * _kMb,
+    'SmolLM2-360M',
+    'SmolLM2-360M-Instruct-Q4_K_M.gguf',
+    240 * _kMb,
   ),
   ModelTier.enhancement2: _TierSpec(
-    '3B',
-    'Qwen2.5-3B-Instruct-Q4_K_M.gguf',
-    1900 * _kMb,
+    'SmolLM2-1.7B',
+    'SmolLM2-1.7B-Instruct-Q4_K_M.gguf',
+    1024 * _kMb,
   ),
 };
 
-// Tier RAM thresholds
-const double _kEnhancement2MinGb = 8.0;
-const double _kEnhancement1MinGb = 6.0;
+// Tier RAM thresholds for ultra-lightweight SmolLM execution
+const double _kEnhancement2MinGb = 4.0;
+const double _kEnhancement1MinGb = 2.5;
 
 /// Result from a hardware profiling pass.
 class HardwareProfile {
@@ -78,11 +78,7 @@ class HardwareProfile {
       'cores=$physicalCoreCount, tier=$maxAllowedTier, model=$deviceModel)';
 }
 
-/// Module A: Profiles device hardware and returns the appropriate model tier.
-///
-/// Uses a [MethodChannel] to call Android's [ActivityManager.MemoryInfo] for
-/// accurate total RAM, since neither [device_info_plus] nor [system_info2]
-/// expose total physical RAM on Android without native code.
+/// Module A: Profiles device hardware and returns the appropriate SmolLM model tier.
 class HardwareProfilerService {
   static const MethodChannel _channel =
       MethodChannel('com.rescuemesh/hardware');
@@ -125,14 +121,13 @@ class HardwareProfilerService {
       physicalCoreCount: coreCount,
       deviceModel: deviceModel,
       maxAllowedTier: maxAllowed,
-      // Conservative: start at base, let the user opt-in to higher tiers
       recommendedTier: ModelTier.base,
     );
 
     return _cachedProfile!;
   }
 
-  /// Determines the maximum model tier this device can safely run.
+  /// Determines the maximum SmolLM model tier this device can safely run.
   static ModelTier _tierForRam(int totalRamBytes) {
     final gb = totalRamBytes / _kGb;
     if (gb >= _kEnhancement2MinGb) return ModelTier.enhancement2;
@@ -153,11 +148,10 @@ class HardwareProfilerService {
   }
 
   // ─────────────────────────────────────────────
-  // Tier metadata accessors — all driven by _kTierSpecs
-  // Replacing 3 separate switch statements (~30 lines) with map lookups.
+  // Tier metadata accessors — driven by SmolLM _kTierSpecs
   // ─────────────────────────────────────────────
 
-  /// Human-readable model size label (e.g. "1.5B").
+  /// Human-readable model size label (e.g. "SmolLM2-360M").
   static String tierLabel(ModelTier tier) =>
       _kTierSpecs[tier]!.label;
 

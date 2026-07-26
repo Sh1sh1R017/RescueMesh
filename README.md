@@ -68,16 +68,16 @@ It combines **peer-to-peer Bluetooth Low Energy (BLE) store-and-forward mesh net
 
 ## 🧠 On-Device Edge AI Engine
 
-RescueMesh hosts a **multi-tiered neural triage architecture** powered by GGUF quantization. Inference runs natively on-device via C++ bindings without internet access.
+RescueMesh hosts a **multi-tiered neural triage architecture** powered exclusively by HuggingFace **SmolLM2** ultra-compact models. Inference runs natively on-device via C++ llama.cpp bindings without internet access.
 
-### Hardware Tier Allocation
+### Hardware Tier Allocation (SmolLM2 Family)
 
 | Tier | Target Model | Model Size | RAM Requirement | Execution Speed |
 |:---:|:---:|:---:|:---:|:---:|
-| **Base Failsafe** | `First-Aid Knowledge Base` | 0 MB | Any ($\ge 2\text{ GB}$) | Instant ($< 10\text{ ms}$) |
-| **Tier 0** | `Qwen2.5-0.5B-Instruct` | ~490 MB | $\ge 4\text{ GB}$ | $\approx 25\text{ tok/s}$ |
-| **Tier 1** | `Qwen2.5-1.5B-Instruct` | ~1.1 GB | $\ge 6\text{ GB}$ | $\approx 18\text{ tok/s}$ |
-| **Tier 2** | `Qwen2.5-3B-Instruct` | ~1.9 GB | $\ge 8\text{ GB}$ | $\approx 12\text{ tok/s}$ |
+| **Base Failsafe** | `First-Aid Knowledge Base` | 0 MB | Any ($\ge 1\text{ GB}$) | Instant ($< 10\text{ ms}$) |
+| **Tier 0 (Ultra-Light)** | `SmolLM2-135M-Instruct` | ~95 MB | $\ge 1.5\text{ GB}$ | $\approx 80\text{ tok/s}$ |
+| **Tier 1 (Balanced)** | `SmolLM2-360M-Instruct` | ~240 MB | $\ge 2.5\text{ GB}$ | $\approx 50\text{ tok/s}$ |
+| **Tier 2 (High-Acc)** | `SmolLM2-1.7B-Instruct` | ~1.0 GB | $\ge 4.0\text{ GB}$ | $\approx 25\text{ tok/s}$ |
 
 - **Thermal Thread Capping**: Thread count is bounded to physical CPU performance cores to eliminate thermal throttling during extended field operations.
 - **Resumable GGUF Transfers**: Range-header HTTP support allows seamless model synchronization across mesh gateway nodes.

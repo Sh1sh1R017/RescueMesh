@@ -8,7 +8,7 @@ import '../../providers/llm_provider.dart';
 /// Module D — Setup/Status Screen
 ///
 /// Dark-mode first. Shows:
-///   • Device RAM & active model
+///   • Device RAM & active SmolLM2 model
 ///   • Per-tier download progress with mesh IP input
 ///   • Load model button
 class LlmSettingsScreen extends ConsumerStatefulWidget {
@@ -24,21 +24,21 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
   static const _modelTileConfigs = [
     (
       tier: ModelTier.base,
-      title: 'Base Model (0.5B) — Failsafe',
-      subtitle: 'Qwen2.5-0.5B-Instruct-Q4_K_M • ~490 MB',
-      minRam: '2 GB RAM minimum',
+      title: 'SmolLM2 Ultra-Compact (135M)',
+      subtitle: 'SmolLM2-135M-Instruct-Q4_K_M • ~95 MB',
+      minRam: '1.5 GB RAM minimum',
     ),
     (
       tier: ModelTier.enhancement1,
-      title: 'Enhancement Pack 1 (1.5B)',
-      subtitle: 'Qwen2.5-1.5B-Instruct-Q4_K_M • ~1.1 GB',
-      minRam: '6 GB RAM required',
+      title: 'SmolLM2 Balanced (360M)',
+      subtitle: 'SmolLM2-360M-Instruct-Q4_K_M • ~240 MB',
+      minRam: '2.5 GB RAM required',
     ),
     (
       tier: ModelTier.enhancement2,
-      title: 'Enhancement Pack 2 (3B)',
-      subtitle: 'Qwen2.5-3B-Instruct-Q4_K_M • ~1.9 GB',
-      minRam: '8 GB RAM required',
+      title: 'SmolLM2 High-Accuracy (1.7B)',
+      subtitle: 'SmolLM2-1.7B-Instruct-Q4_K_M • ~1.0 GB',
+      minRam: '4 GB RAM required',
     ),
   ];
 
@@ -65,7 +65,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0D0F12),
       appBar: AppBar(
-        title: const Text('LLM Engine Settings'),
+        title: const Text('SmolLM Engine Settings'),
         backgroundColor: const Color(0xFF111318),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -85,7 +85,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
             const SizedBox(height: 16),
             _buildMeshUrlCard(),
             const SizedBox(height: 16),
-            _buildSectionLabel('MODEL PACKS'),
+            _buildSectionLabel('SMOLLM MODEL PACKS'),
             const SizedBox(height: 8),
             for (final cfg in _modelTileConfigs)
               _buildModelTileForTier(
@@ -158,7 +158,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  'QWEN2.5 · $tierLabel',
+                  'SMOLLM2 · $tierLabel',
                   style: TextStyle(
                     color: _tierColor(activeTier),
                     fontWeight: FontWeight.bold,
@@ -221,7 +221,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
           _buildSectionLabel('MESH DOWNLOAD SOURCE'),
           const SizedBox(height: 4),
           const Text(
-            'Enter the IP of your local mesh router / file server.',
+            'Enter the URL/IP of your mesh server hosting SmolLM2 GGUF files.',
             style: TextStyle(color: Colors.grey, fontSize: 12),
           ),
           const SizedBox(height: 12),
@@ -233,7 +233,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
               fontSize: 14,
             ),
             decoration: InputDecoration(
-              hintText: 'http://192.168.4.1:8080/models/',
+              hintText: 'https://huggingface.co/HuggingFaceTB/',
               hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
               filled: true,
               fillColor: const Color(0xFF1A1D24),
@@ -260,7 +260,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
                   FocusScope.of(context).unfocus();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Mesh URL updated'),
+                      content: Text('SmolLM2 Mesh URL updated'),
                       duration: Duration(seconds: 2),
                     ),
                   );
@@ -481,7 +481,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
               )
             : const Icon(Icons.memory),
         label: Text(
-          isLoading ? 'Loading model...' : 'Load Best Available Model',
+          isLoading ? 'Loading SmolLM2 model...' : 'Load Best SmolLM2 Model',
           style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
         ),
         onPressed: isLoading
@@ -508,16 +508,15 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
   }
 
   Color _ramColor(double gb) {
-    if (gb >= 8) return const Color(0xFF69FF47);
-    if (gb >= 6) return Colors.orange;
-    if (gb >= 4) return Colors.yellow;
-    return const Color(0xFFFF5252);
+    if (gb >= 4) return const Color(0xFF69FF47);
+    if (gb >= 2.5) return const Color(0xFF00E5FF);
+    return Colors.yellow;
   }
 
   Color _tierColor(ModelTier tier) {
     switch (tier) {
       case ModelTier.base:
-        return Colors.orange;
+        return Colors.yellow;
       case ModelTier.enhancement1:
         return const Color(0xFF00E5FF);
       case ModelTier.enhancement2:
