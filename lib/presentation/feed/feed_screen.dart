@@ -91,19 +91,28 @@ class FeedScreen extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
+          voiceService.onFinalResult = (text) {
+            textController.text = text;
+            setDialogState(() {});
+          };
+          voiceService.onPartialResult = (text) {
+            textController.text = text;
+            setDialogState(() {});
+          };
+
           return AlertDialog(
             title: const Row(
               children: [
                 Icon(Icons.mic, color: AppTheme.criticalColor),
                 SizedBox(width: 8),
-                Text('Voice Command'),
+                Text('Voice Command & Dictation'),
               ],
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Speak your emergency report clearly into the microphone:'),
+                const Text('Tap START DICTATION and speak your emergency report:'),
                 const SizedBox(height: 16),
                 TextField(
                   controller: textController,
@@ -125,6 +134,12 @@ class FeedScreen extends ConsumerWidget {
                         if (granted) {
                           await voiceService.startListening();
                           setDialogState(() {});
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Microphone permission required for dictation.')),
+                            );
+                          }
                         }
                       }
                     },
@@ -140,7 +155,10 @@ class FeedScreen extends ConsumerWidget {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
+                onPressed: () {
+                  voiceService.stopListening();
+                  Navigator.pop(dialogContext);
+                },
                 child: const Text('CANCEL'),
               ),
               ElevatedButton(
@@ -148,6 +166,7 @@ class FeedScreen extends ConsumerWidget {
                   final text = textController.text.trim();
                   if (text.isEmpty) return;
 
+                  await voiceService.stopListening();
                   final syncEngine = ref.read(syncEngineProvider);
                   final nodeId = ref.read(deviceIdentityProvider);
 
@@ -159,7 +178,7 @@ class FeedScreen extends ConsumerWidget {
                     timestamp: DateTime.now().millisecondsSinceEpoch,
                     ttl: kDefaultTtlMs,
                     hopCount: 0,
-                    payload: '[VOICE] $text',
+                    payload: '[VOICE NOTE] $text',
                   );
 
                   await syncEngine.queueOutgoingPacket(packet);
@@ -167,6 +186,10 @@ class FeedScreen extends ConsumerWidget {
 
                   if (!dialogContext.mounted) return;
                   Navigator.pop(dialogContext);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Voice note posted to mesh feed.')),
+                  );
                 },
                 child: const Text('POST VOICE NOTE'),
               ),

@@ -21,9 +21,13 @@ class AppDatabase {
       path,
       version: 2,
       onConfigure: (db) async {
-        // WAL mode enables concurrent reads while writing, preventing SQLITE_BUSY
-        await db.execute('PRAGMA journal_mode = WAL;');
-        await db.execute('PRAGMA synchronous = NORMAL;');
+        // Use rawQuery for PRAGMA statements that return result rows in SQFlite
+        try {
+          await db.rawQuery('PRAGMA journal_mode = WAL;');
+          await db.rawQuery('PRAGMA synchronous = NORMAL;');
+        } catch (e) {
+          // Non-critical if OS restricts WAL mode
+        }
       },
       onCreate: _createDB,
       onUpgrade: _onUpgradeDB,

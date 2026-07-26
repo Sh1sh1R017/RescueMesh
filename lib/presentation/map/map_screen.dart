@@ -22,6 +22,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   static final RegExp _locationRegExp =
       RegExp(r'\[LAT: ([-\d.]+), LNG: ([-\d.]+)\]');
 
+  final MapController _mapController = MapController();
   int _selectedFilterType = 0; // 0=All, 1=SOS, 2=Reports/Hazards, 4=Resources
   LatLng _currentCenter = const LatLng(27.7172, 85.3240); // Initialized to default disaster response region (Kathmandu/Global)
 
@@ -29,6 +30,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void initState() {
     super.initState();
     _determineCenterLocation();
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
   }
 
   Future<void> _determineCenterLocation() async {
@@ -39,6 +46,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         setState(() {
           _currentCenter = LatLng(pos.latitude, pos.longitude);
         });
+        _mapController.move(_currentCenter, 14.0);
         return;
       }
 
@@ -53,11 +61,35 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             setState(() {
               _currentCenter = LatLng(lat, lng);
             });
+            _mapController.move(_currentCenter, 14.0);
             return;
           }
         }
       }
     } catch (_) {}
+  }
+
+  Future<void> _centerOnUserLocation() async {
+    final pos = await LocationService().getCurrentPosition();
+    if (pos != null && mounted) {
+      final newCenter = LatLng(pos.latitude, pos.longitude);
+      setState(() {
+        _currentCenter = newCenter;
+      });
+      _mapController.move(newCenter, 15.0);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Centered on current GPS location'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to acquire GPS location. Please check location permissions.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -68,6 +100,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       body: Stack(
         children: [
           FlutterMap(
+            mapController: _mapController,
             options: MapOptions(
               initialCenter: _currentCenter,
               initialZoom: 14.0,
@@ -198,18 +231,37 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
         ],
       ),
-      floatingActionButton: Semantics(
-        button: true,
-        label: 'Add Location Report',
-        hint: 'Long-press map or tap to pin location report',
-        child: FloatingActionButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Long-press anywhere on the map to pin a hazard or resource.')),
-            );
-          },
-          child: const Icon(Icons.add_location_alt),
-        ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Semantics(
+            button: true,
+            label: 'Find My Location',
+            hint: 'Center map on current live GPS coordinates',
+            child: FloatingActionButton.small(
+              heroTag: 'find_me_fab',
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              onPressed: _centerOnUserLocation,
+              child: const Icon(Icons.gps_fixed),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Semantics(
+            button: true,
+            label: 'Add Location Report',
+            hint: 'Long-press map or tap to pin location report',
+            child: FloatingActionButton(
+              heroTag: 'add_loc_fab',
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Long-press anywhere on the map to pin a hazard or resource.')),
+                );
+              },
+              child: const Icon(Icons.add_location_alt),
+            ),
+          ),
+        ],
       ),
     );
   }
